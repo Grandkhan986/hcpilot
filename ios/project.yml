@@ -1,0 +1,35 @@
+name: HCPilot
+options:
+  bundleIdPrefix: com.hcpilot
+  deploymentTarget:
+    iOS: "18.0"
+  generateEmptyDirectories: true
+
+targets:
+  HCPilotApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: HCPilotApp
+    settings:
+      base:
+        INFOPLIST_FILE: Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.hcpilot.app
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        DEVELOPMENT_TEAM: ""
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+    dependencies:
+      - package: Alamofire
+      - package: Kingfisher
+
+packages:
+  Alamofire:
+    url: https://github.com/Alamofire/Alamofire.git
+    from: "5.8.0"
+  Kingfisher:
+    url: https://github.com/onevcat/Kingfisher.git
+    from: "7.0.0"
