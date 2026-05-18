@@ -435,7 +435,7 @@ async def list_visits(
     results = MOCK_VISITS
     if visit_status:
         results = [v for v in results if v["status"] == visit_status]
-    return results
+    return [_enrich_visit(v) for v in results]
 
 @app.post("/visits", status_code=status.HTTP_201_CREATED)
 async def create_visit(visit: dict, payload: dict = Depends(verify_token)):
@@ -450,7 +450,7 @@ async def get_visit(visit_id: str, payload: dict = Depends(verify_token)):
     visit = next((v for v in MOCK_VISITS if v["id"] == visit_id), None)
     if not visit:
         raise HTTPException(status_code=404, detail="Visite non trouvée")
-    return visit
+    return _enrich_visit(visit)
 
 @app.put("/visits/{visit_id}")
 async def update_visit(visit_id: str, visit: dict, payload: dict = Depends(verify_token)):
@@ -559,17 +559,25 @@ async def stripe_webhook(request: Request):
     return {"received": True}
 
 # Reporting Endpoints
+def _enrich_visit(visit: dict) -> dict:
+    """Attach patient_name to a visit dict (denormalized join)"""
+    patient = next((p for p in MOCK_PATIENTS if p["id"] == visit.get("patient_id")), None)
+    name = f"{patient['first_name']} {patient['last_name']}" if patient else None
+    return {**visit, "patient_name": name}
+
 @app.get("/reports/dashboard")
 async def get_dashboard(payload: dict = Depends(verify_token)):
     """Get dashboard statistics"""
     low_stock = [s for s in MOCK_STOCK if s["quantity"] <= s["min_quantity"]]
-    today_visits = [v for v in MOCK_VISITS if v["status"] in ("scheduled", "in_progress")]
+    today_visits = [_enrich_visit(v) for v in MOCK_VISITS if v["status"] in ("scheduled", "in_progress")]
+    today_revenue = sum(v["total_amount"] for v in MOCK_VISITS if v["status"] == "completed")
     return {
         "total_patients": len(MOCK_PATIENTS),
         "today_visits": len(today_visits),
         "pending_invoices": len([i for i in MOCK_INVOICES if i["status"] == "sent"]),
         "low_stock_alerts": len(low_stock),
         "monthly_revenue": 4250.00,
+        "today_revenue": today_revenue,
         "visits_today": today_visits,
         "low_stock_items": low_stock,
     }
