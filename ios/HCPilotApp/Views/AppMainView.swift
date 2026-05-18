@@ -4,51 +4,70 @@ struct AppMainView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @State private var selectedTab = 0
 
+    private let tabs: [(title: String, icon: String)] = [
+        ("Accueil", "house.fill"),
+        ("Visites", "calendar"),
+        ("Stock", "cube.fill"),
+        ("Factures", "doc.text.fill"),
+        ("Rapports", "chart.bar.fill"),
+        ("Patients", "person.2.fill"),
+        ("Profil", "person.crop.circle.fill"),
+    ]
+
     var body: some View {
-        TabView(selection: $selectedTab) {
-            HomeView()
-                .tabItem {
-                    Label("Accueil", systemImage: "house.fill")
+        VStack(spacing: 0) {
+            Group {
+                switch selectedTab {
+                case 0: HomeView()
+                case 1: VisitsListView()
+                case 2: StockView()
+                case 3: InvoicesView()
+                case 4: ReportsView()
+                case 5: PatientsView()
+                case 6: ProfileView()
+                default: HomeView()
                 }
-                .tag(0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            VisitsListView()
-                .tabItem {
-                    Label("Visites", systemImage: "calendar.fill")
-                }
-                .tag(1)
-
-            StockView()
-                .tabItem {
-                    Label("Stock", systemImage: "cube.fill")
-                }
-                .tag(2)
-
-            InvoicesView()
-                .tabItem {
-                    Label("Factures", systemImage: "doc.text.fill")
-                }
-                .tag(3)
-
-            ReportsView()
-                .tabItem {
-                    Label("Rapports", systemImage: "chart.bar.fill")
-                }
-                .tag(4)
-
-            PatientsView()
-                .tabItem {
-                    Label("Patients", systemImage: "person.fill")
-                }
-                .tag(5)
-
-            ProfileView()
-                .tabItem {
-                    Label("Profil", systemImage: "person.crop.circle.fill")
-                }
-                .tag(6)
+            HCPilotTabBar(tabs: tabs, selected: $selectedTab)
         }
-        .accentColor(.blue)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+    }
+}
+
+struct HCPilotTabBar: View {
+    let tabs: [(title: String, icon: String)]
+    @Binding var selected: Int
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(tabs.enumerated()), id: \.offset) { index, tab in
+                Button {
+                    selected = index
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 22, weight: selected == index ? .semibold : .regular))
+                        Text(tab.title)
+                            .font(.system(size: 10, weight: selected == index ? .semibold : .regular))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .foregroundStyle(selected == index ? Color.blue : Color.secondary)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.top, 6)
+        .padding(.bottom, 2)
+        .background(
+            Color(.systemBackground)
+                .shadow(color: Color.black.opacity(0.08), radius: 4, y: -2)
+                .ignoresSafeArea(edges: .bottom)
+        )
     }
 }
 

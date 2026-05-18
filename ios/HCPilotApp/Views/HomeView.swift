@@ -19,12 +19,16 @@ struct HomeView: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        Button(action: viewModel.showNotifications) {
-                            Image(systemName: "bell.fill")
-                                .font(.title2)
-                        }
                     }
                     .padding(.horizontal)
+                    .padding(.top, 8)
+
+                    if let errorMessage = viewModel.errorMessage {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .padding(.horizontal)
+                    }
 
                     // Stats Cards
                     LazyVGrid(columns: [
@@ -32,8 +36,8 @@ struct HomeView: View {
                         GridItem(.flexible())
                     ], spacing: 16) {
                         StatCard(
-                            title: "Revenu du jour",
-                            value: String(format: "%.0f €", viewModel.todayRevenue),
+                            title: "Revenu du mois",
+                            value: String(format: "%.0f €", viewModel.monthlyRevenue),
                             icon: "eurosign.circle",
                             color: .green
                         )
@@ -60,20 +64,15 @@ struct HomeView: View {
                             .frame(height: 200)
                             .cornerRadius(12)
 
-                        HStack {
-                            Button("Commencer") {
-                                if let first = viewModel.upcomingVisits.first(where: { $0.status == .scheduled }) {
-                                    viewModel.startVisit(first)
-                                }
+                        Button(viewModel.nextActiveVisit?.status == .in_progress ? "Continuer" : "Commencer") {
+                            if let next = viewModel.nextActiveVisit {
+                                viewModel.startVisit(next)
                             }
-                            .frame(maxWidth: .infinity)
-                            .buttonStyle(PrimaryButtonStyle())
-
-                            Button(action: viewModel.showRouteOptions) {
-                                Image(systemName: "line.3.horizontal")
-                            }
-                            .buttonStyle(SecondaryButtonStyle())
                         }
+                        .frame(maxWidth: .infinity)
+                        .buttonStyle(PrimaryButtonStyle())
+                        .disabled(viewModel.nextActiveVisit == nil)
+                        .opacity(viewModel.nextActiveVisit == nil ? 0.5 : 1)
                     }
                     .padding(.horizontal)
 
@@ -136,7 +135,7 @@ struct HomeView: View {
                     .padding(.bottom, 20)
                 }
             }
-            .navigationTitle("Ma Journée")
+            .navigationBarHidden(true)
             .refreshable {
                 viewModel.refresh()
             }

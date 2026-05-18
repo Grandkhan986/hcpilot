@@ -4,7 +4,7 @@ import CoreLocation
 @MainActor
 class HomeViewModel: ObservableObject {
     @Published var userName = ""
-    @Published var todayRevenue = 0.0
+    @Published var monthlyRevenue = 0.0
     @Published var todayVisitsCount = 0
     @Published var upcomingVisits: [Visit] = []
     @Published var stockItems: [StockItem] = []
@@ -12,6 +12,10 @@ class HomeViewModel: ObservableObject {
     @Published var currentLocation = CLLocationCoordinate2D(latitude: 48.8566, longitude: 2.3522)
     @Published var isLoading = false
     @Published var errorMessage: String?
+
+    var nextActiveVisit: Visit? {
+        upcomingVisits.first(where: { $0.status == .scheduled || $0.status == .in_progress })
+    }
 
     private let apiService = APIService.shared
 
@@ -42,7 +46,7 @@ class HomeViewModel: ObservableObject {
             let dashboard = try await apiService.getDashboard()
 
             todayVisitsCount = dashboard.today_visits
-            todayRevenue = dashboard.monthly_revenue
+            monthlyRevenue = dashboard.monthly_revenue
             lowStockCount = dashboard.low_stock_alerts
             upcomingVisits = dashboard.visits_today
             stockItems = dashboard.low_stock_items
@@ -81,18 +85,19 @@ class HomeViewModel: ObservableObject {
     }
 
     func optimizeRoute() {
-        guard !upcomingVisits.isEmpty else { return }
+        guard !upcomingVisits.isEmpty else {
+            errorMessage = "Aucune visite à optimiser"
+            return
+        }
         Task {
             do {
                 _ = try await apiService.optimizeRoute(visits: upcomingVisits)
+                errorMessage = nil
             } catch {
                 errorMessage = "Erreur d'optimisation: \(error.localizedDescription)"
             }
         }
     }
-
-    func showNotifications() {}
-    func showRouteOptions() {}
 }
 
 // MARK: - Composants UI réutilisables

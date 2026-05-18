@@ -26,18 +26,26 @@ class APIService {
         d.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
-            // Try ISO 8601 with fractional seconds first
-            let formatters: [DateFormatter] = {
-                let iso = DateFormatter()
-                iso.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
-                iso.locale = Locale(identifier: "en_US_POSIX")
-                let isoSimple = DateFormatter()
-                isoSimple.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-                isoSimple.locale = Locale(identifier: "en_US_POSIX")
-                return [iso, isoSimple]
-            }()
-            for formatter in formatters {
-                if let date = formatter.date(from: dateString) {
+            // Python's datetime.isoformat() can emit microseconds (6 digits).
+            // DateFormatter only handles up to 3 reliably, so truncate.
+            let normalized = dateString.replacingOccurrences(
+                of: #"(\.\d{3})\d+"#,
+                with: "$1",
+                options: .regularExpression
+            )
+            let formats = [
+                "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ",
+                "yyyy-MM-dd'T'HH:mm:ssZZZZZ",
+                "yyyy-MM-dd'T'HH:mm:ss.SSS",
+                "yyyy-MM-dd'T'HH:mm:ss",
+                "yyyy-MM-dd",
+            ]
+            for format in formats {
+                let f = DateFormatter()
+                f.dateFormat = format
+                f.locale = Locale(identifier: "en_US_POSIX")
+                f.timeZone = TimeZone(secondsFromGMT: 0)
+                if let date = f.date(from: normalized) {
                     return date
                 }
             }
