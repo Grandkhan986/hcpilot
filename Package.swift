@@ -1,34 +1,24 @@
-{
-  "name": "HCPilot iOS",
-  "version": "1.0.0",
-  "description": "Operating System for Mobile Healthcare Professionals",
-  "authors": "HCPilot Team",
-  "swift_versions": "5.9",
-  "platforms": [
-    "ios"
-  ],
-  "dependencies": [
-    "Alamofire": "~> 5.8",
-    "Kingfisher": "~> 7.0",
-    "SwiftUI-Introspect": "~> 0.5",
-    "SwiftData": ">= 15.0"
-  ],
-  "swift_tools_version": "5.9",
-  "target": [
-    {
-      "name": "HCPilotApp",
-      "platform": "ios",
-      "sources": [
-        "HCPilotApp"
-      ],
-      "dependencies": [
-        {
-          "package": "Alamofire"
-        },
-        {
-          "package": "Kingfisher"
-        }
-      ]
-    }
-  ]
-}
+// swift-tools-version: 5.9
+import PackageDescription
+
+let package = Package(
+    name: "HCPilot",
+    platforms: [
+        .iOS(.v15),
+        .macOS(.v12)
+    ],
+    products: [
+        .library(name: "HCPilot", targets: ["HCPilotApp"])
+    ],
+    dependencies: [
+        .package(url: "https://github.com/Alamofire/Alamofire.git", from: "5.8.0"),
+        .package(url: "https://github.com/onevcat/Kingfisher.git", from: "7.0.0")
+    ],
+    targets: [
+        .target(
+            name: "HCPilotApp",
+            dependencies: ["Alamofire", "Kingfisher"],
+            path: "ios/HCPilotApp"
+        )
+    ]
+)
