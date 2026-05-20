@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Journal d'audit HIPAA — lecture seule. Liste les actions enregistrées
-/// (création de consentement, archivage patient, lifecycle visite, usage stock)
+/// (création de consentement, archivage client, lifecycle session, usage stock)
 /// avec timestamp, IP, et entité concernée.
 struct AuditLogView: View {
     @State private var entries: [AuditLogEntry] = []
@@ -12,8 +12,8 @@ struct AuditLogView: View {
     private let filters: [(label: String, value: String)] = [
         ("Tous", "all"),
         ("Consentements", "consents"),
-        ("Clients", "patients"),
-        ("Sessions", "visits"),
+        ("Clients", "clients"),
+        ("Sessions", "sessions"),
         ("Stock", "inventory_transactions"),
     ]
 
@@ -38,7 +38,7 @@ struct AuditLogView: View {
                 VStack(spacing: 8) {
                     Image(systemName: "tray").font(.largeTitle).foregroundStyle(.secondary)
                     Text("Aucune entrée dans le journal").foregroundStyle(.secondary)
-                    Text("Les actions sensibles (consentement, visite, stock) sont automatiquement journalisées.")
+                    Text("Les actions sensibles (consentement, session, stock) sont automatiquement journalisées.")
                         .font(.caption2).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
@@ -113,8 +113,8 @@ private struct AuditRow: View {
     private func labelForEntity(_ s: String) -> String {
         switch s {
         case "consents": return "Consentement"
-        case "patients": return "Client"
-        case "visits": return "Session"
+        case "clients": return "Client"
+        case "sessions": return "Session"
         case "inventory_transactions": return "Stock"
         default: return s.capitalized
         }
@@ -123,8 +123,8 @@ private struct AuditRow: View {
     private func iconForEntity(_ s: String) -> String {
         switch s {
         case "consents": return "doc.text.fill"
-        case "patients": return "person.fill"
-        case "visits": return "calendar"
+        case "clients": return "person.fill"
+        case "sessions": return "calendar"
         case "inventory_transactions": return "cube.fill"
         default: return "circle.fill"
         }

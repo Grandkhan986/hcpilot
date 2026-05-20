@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// Formulaire d'édition d'une visite existante.
-struct VisitFormView: View {
-    let visit: Visit
+/// Formulaire d'édition d'une session existante.
+struct SessionFormView: View {
+    let session: Session
     var onSaved: () -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @State private var visitType: String = ""
+    @State private var sessionType: String = ""
     @State private var address: String = ""
     @State private var notes: String = ""
     @State private var scheduledAt: Date = Date()
@@ -21,7 +21,7 @@ struct VisitFormView: View {
         NavigationView {
             Form {
                 Section(header: Text("Service")) {
-                    Picker("Type", selection: $visitType) {
+                    Picker("Type", selection: $sessionType) {
                         ForEach(serviceTypes, id: \.self) { t in
                             Text(t.replacingOccurrences(of: "_", with: " ")).tag(t)
                         }
@@ -62,12 +62,12 @@ struct VisitFormView: View {
     }
 
     private func preload() {
-        visitType = visit.service_type
-        address = visit.address
-        notes = visit.notes ?? ""
-        scheduledAt = visit.scheduled_at
-        estimatedDuration = visit.estimated_duration ?? 60
-        totalAmount = String(format: "%.2f", visit.total)
+        sessionType = session.formulation_name
+        address = session.address
+        notes = session.notes ?? ""
+        scheduledAt = session.scheduled_at
+        estimatedDuration = session.estimated_duration ?? 60
+        totalAmount = String(format: "%.2f", session.total)
     }
 
     private func save() async {
@@ -75,20 +75,20 @@ struct VisitFormView: View {
         errorMessage = nil
         defer { isSaving = false }
 
-        let patch = APIService.VisitPatch(
-            visit_type: visitType != visit.service_type ? visitType : nil,
-            visit_date: scheduledAt != visit.scheduled_at ? scheduledAt : nil,
-            address: address != visit.address ? address : nil,
+        let patch = APIService.SessionPatch(
+            formulation_name: sessionType != session.formulation_name ? sessionType : nil,
+            scheduled_at: scheduledAt != session.scheduled_at ? scheduledAt : nil,
+            address: address != session.address ? address : nil,
             // Adresse changée → on laisse le backend regéocoder (lat/lng à nil)
-            latitude: address != visit.address ? nil : nil,
-            longitude: address != visit.address ? nil : nil,
-            notes: notes != (visit.notes ?? "") ? notes : nil,
-            estimated_duration: estimatedDuration != (visit.estimated_duration ?? 60) ? estimatedDuration : nil,
-            total_amount: Double(totalAmount.replacingOccurrences(of: ",", with: ".")).map { $0 != visit.total ? $0 : nil } ?? nil
+            latitude: address != session.address ? nil : nil,
+            longitude: address != session.address ? nil : nil,
+            notes: notes != (session.notes ?? "") ? notes : nil,
+            estimated_duration: estimatedDuration != (session.estimated_duration ?? 60) ? estimatedDuration : nil,
+            total_amount: Double(totalAmount.replacingOccurrences(of: ",", with: ".")).map { $0 != session.total ? $0 : nil } ?? nil
         )
 
         do {
-            _ = try await APIService.shared.updateVisit(id: visit.id, patch: patch)
+            _ = try await APIService.shared.updateSession(id: session.id, patch: patch)
             onSaved()
             dismiss()
         } catch {

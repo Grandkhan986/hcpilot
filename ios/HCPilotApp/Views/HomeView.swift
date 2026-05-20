@@ -42,8 +42,8 @@ struct HomeView: View {
                             color: .green
                         )
                         StatCard(
-                            title: "Visites du jour",
-                            value: "\(viewModel.todayVisitsCount)",
+                            title: "Sessions du jour",
+                            value: "\(viewModel.todaySessionsCount)",
                             icon: "person.2.circle",
                             color: .blue
                         )
@@ -78,53 +78,53 @@ struct HomeView: View {
                             }
                             .buttonStyle(.plain)
 
-                            VisitLifecycleButton(
-                                visit: viewModel.nextActiveVisit,
-                                onStart: { viewModel.startVisit($0) },
-                                onComplete: { viewModel.completeVisit($0) }
+                            SessionLifecycleButton(
+                                session: viewModel.nextActiveSession,
+                                onStart: { viewModel.startSession($0) },
+                                onComplete: { viewModel.completeSession($0) }
                             )
                         }
                         .padding(.horizontal)
-                    } else if viewModel.nextActiveVisit != nil {
-                        // Visites du jour sans coordonnées (cas edge) : on garde le bouton lifecycle
+                    } else if viewModel.nextActiveSession != nil {
+                        // Sessions du jour sans coordonnées (cas edge) : on garde le bouton lifecycle
                         // pour ne pas perdre la fonctionnalité "Commencer/Terminer".
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Ma Journée")
                                 .font(.headline)
-                            VisitLifecycleButton(
-                                visit: viewModel.nextActiveVisit,
-                                onStart: { viewModel.startVisit($0) },
-                                onComplete: { viewModel.completeVisit($0) }
+                            SessionLifecycleButton(
+                                session: viewModel.nextActiveSession,
+                                onStart: { viewModel.startSession($0) },
+                                onComplete: { viewModel.completeSession($0) }
                             )
                         }
                         .padding(.horizontal)
                     }
 
-                    // Upcoming Visits
+                    // Upcoming Sessions
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("Visites à venir")
+                            Text("Sessions à venir")
                                 .font(.headline)
                             Spacer()
                             NavigationLink("Tout voir") {
-                                VisitsListView()
+                                SessionsListView()
                             }
                             .font(.caption)
                         }
 
-                        if viewModel.upcomingVisits.isEmpty {
+                        if viewModel.upcomingSessions.isEmpty {
                             VStack(spacing: 16) {
                                 Image(systemName: "calendar.circle")
                                     .font(.largeTitle)
                                     .foregroundStyle(.gray)
-                                Text("Aucune visite prévue")
+                                Text("Aucune session prévue")
                                     .foregroundStyle(.secondary)
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.top, 40)
                         } else {
-                            ForEach(viewModel.upcomingVisits) { visit in
-                                VisitListItem(visit: visit)
+                            ForEach(viewModel.upcomingSessions) { session in
+                                SessionListItem(session: session)
                             }
                         }
                     }
@@ -171,18 +171,18 @@ struct HomeView: View {
     }
 }
 
-/// Bouton de cycle de vie d'une visite. En `scheduled` : action inline
+/// Bouton de cycle de vie d'une session. En `scheduled` : action inline
 /// "Commencer". En `in_progress` : navigation vers le détail (où la sheet
 /// LotUsageSheet capture le lot avant de clôturer). Affiche un compteur live.
-struct VisitLifecycleButton: View {
-    let visit: Visit?
-    let onStart: (Visit) -> Void
-    let onComplete: (Visit) -> Void  // conservé pour compat, non utilisé en in_progress
+struct SessionLifecycleButton: View {
+    let session: Session?
+    let onStart: (Session) -> Void
+    let onComplete: (Session) -> Void  // conservé pour compat, non utilisé en in_progress
 
     var body: some View {
-        if let visit, visit.status == .in_progress {
+        if let session, session.status == .in_progress {
             VStack(spacing: 6) {
-                if let startedAt = visit.started_at {
+                if let startedAt = session.started_at {
                     HStack(spacing: 4) {
                         Image(systemName: "clock.fill")
                             .font(.caption2)
@@ -194,7 +194,7 @@ struct VisitLifecycleButton: View {
                     .foregroundStyle(.secondary)
                 }
                 NavigationLink {
-                    VisitDetailView(visit: visit, onAction: {})
+                    SessionDetailView(session: session, onAction: {})
                 } label: {
                     Text("Terminer la session")
                         .frame(maxWidth: .infinity)
@@ -207,12 +207,12 @@ struct VisitLifecycleButton: View {
             }
         } else {
             Button("Commencer") {
-                if let visit { onStart(visit) }
+                if let session { onStart(session) }
             }
             .frame(maxWidth: .infinity)
             .buttonStyle(PrimaryButtonStyle())
-            .disabled(visit == nil)
-            .opacity(visit == nil ? 0.5 : 1)
+            .disabled(session == nil)
+            .opacity(session == nil ? 0.5 : 1)
         }
     }
 }

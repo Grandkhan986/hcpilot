@@ -5,8 +5,8 @@ import CoreLocation
 class HomeViewModel: ObservableObject {
     @Published var userName = ""
     @Published var monthlyRevenue = 0.0
-    @Published var todayVisitsCount = 0
-    @Published var upcomingVisits: [Visit] = []
+    @Published var todaySessionsCount = 0
+    @Published var upcomingSessions: [Session] = []
     @Published var stockItems: [LowStockProduct] = []
     @Published var lowStockCount = 0
     @Published var isLoading = false
@@ -16,8 +16,8 @@ class HomeViewModel: ObservableObject {
     @Published var routeStops: [RouteMapStop] = []
     @Published var polylineCoordinates: [CLLocationCoordinate2D] = []
 
-    var nextActiveVisit: Visit? {
-        upcomingVisits.first(where: { $0.status == .scheduled || $0.status == .in_progress })
+    var nextActiveSession: Session? {
+        upcomingSessions.first(where: { $0.status == .scheduled || $0.status == .in_progress })
     }
 
     private let apiService = APIService.shared
@@ -48,15 +48,15 @@ class HomeViewModel: ObservableObject {
         do {
             let dashboard = try await apiService.getDashboard()
 
-            todayVisitsCount = dashboard.today_visits
+            todaySessionsCount = dashboard.today_visits
             monthlyRevenue = dashboard.monthly_revenue
             lowStockCount = dashboard.low_stock_alerts
-            upcomingVisits = dashboard.visits_today
+            upcomingSessions = dashboard.sessions_today
             stockItems = dashboard.low_stock_items
 
             await loadRouteOptimization()
-            // Reprogramme les rappels J-1 et H-2 selon les visites du jour
-            await NotificationService.shared.scheduleVisitReminders(visits: upcomingVisits)
+            // Reprogramme les rappels J-1 et H-2 selon les sessions du jour
+            await NotificationService.shared.scheduleSessionReminders(sessions: upcomingSessions)
         } catch {
             errorMessage = "Erreur lors du chargement: \(error.localizedDescription)"
         }
@@ -67,8 +67,8 @@ class HomeViewModel: ObservableObject {
     /// Calcule l'itinéraire optimisé du jour et alimente `routeStops` + `polylineCoordinates`
     /// pour la mini-carte du Home. Silencieux en cas d'échec.
     private func loadRouteOptimization() async {
-        let activeVisits = upcomingVisits.filter { $0.status != .cancelled }
-        let withCoords = activeVisits.compactMap { v -> (Visit, CLLocationCoordinate2D)? in
+        let activeSessions = upcomingSessions.filter { $0.status != .cancelled }
+        let withCoords = activeSessions.compactMap { v -> (Session, CLLocationCoordinate2D)? in
             if let lat = v.latitude, let lng = v.longitude {
                 return (v, CLLocationCoordinate2D(latitude: lat, longitude: lng))
             }
@@ -81,13 +81,13 @@ class HomeViewModel: ObservableObject {
         }
 
         do {
-            let response = try await apiService.optimizeRoute(visits: withCoords.map { $0.0 })
+            let response = try await apiService.optimizeRoute(sessions: withCoords.map { $0.0 })
             let orderById = Dictionary(
                 uniqueKeysWithValues: response.optimized_route.map { ($0.session_id, $0.order) }
             )
             routeStops = withCoords.map { v, coord in
                 let order = orderById[v.id] ?? Int.max
-                let label = v.client_name ?? v.service_type.replacingOccurrences(of: "_", with: " ")
+                let label = v.client_name ?? v.formulation_name.replacingOccurrences(of: "_", with: " ")
                 return RouteMapStop(
                     id: v.id,
                     order: order,
@@ -112,10 +112,10 @@ class HomeViewModel: ObservableObject {
         userName = user?.full_name ?? "Docteur"
     }
 
-    func startVisit(_ visit: Visit) {
+    func startSession(_ session: Session) {
         Task {
             do {
-                _ = try await apiService.startVisit(visitId: visit.id)
+                _ = try await apiService.startSession(sessionId: session.id)
                 await loadDashboard()
             } catch {
                 errorMessage = "Erreur: \(error.localizedDescription)"
@@ -123,10 +123,10 @@ class HomeViewModel: ObservableObject {
         }
     }
 
-    func completeVisit(_ visit: Visit) {
+    func completeSession(_ session: Session) {
         Task {
             do {
-                _ = try await apiService.completeVisit(visitId: visit.id)
+                _ = try await apiService.completeSession(sessionId: session.id)
                 await loadDashboard()
             } catch {
                 errorMessage = "Erreur: \(error.localizedDescription)"
@@ -166,8 +166,8 @@ struct StatCard: View {
     }
 }
 
-struct VisitListItem: View {
-    let visit: Visit
+struct SessionListItem: View {
+    let session: Session
 
     var body: some View {
         HStack(spacing: 12) {
@@ -181,7 +181,7 @@ struct VisitListItem: View {
                 )
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(visit.client_name ?? "Client")
+                Text(session.client_name ?? "Client")
                     .font(.subheadline)
                     .fontWeight(.semibold)
 
@@ -189,12 +189,12 @@ struct VisitListItem: View {
                     Image(systemName: "clock")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text(visit.scheduled_at, formatter: timeFormatter)
+                    Text(session.scheduled_at, formatter: timeFormatter)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
 
-                Text(visit.service_type.replacingOccurrences(of: "_", with: " "))
+                Text(session.formulation_name.replacingOccurrences(of: "_", with: " "))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -212,7 +212,7 @@ struct VisitListItem: View {
     }
 
     private var statusColor: Color {
-        switch visit.status {
+        switch session.status {
         case .in_progress: return .blue
         case .completed: return .green
         case .cancelled: return .red
@@ -221,7 +221,7 @@ struct VisitListItem: View {
     }
 
     private var statusIcon: String {
-        switch visit.status {
+        switch session.status {
         case .in_progress: return "clock.fill"
         case .completed: return "checkmark.circle"
         case .cancelled: return "xmark.circle"

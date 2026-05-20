@@ -1,6 +1,6 @@
 import Foundation
 
-struct Patient: Identifiable, Hashable, Codable {
+struct Client: Identifiable, Hashable, Codable {
     let id: String
     let first_name: String
     let last_name: String

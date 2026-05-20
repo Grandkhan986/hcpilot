@@ -20,7 +20,7 @@ def _token() -> str:
 async def test_start_visit_sets_started_at(client: AsyncClient):
     headers = {"Authorization": f"Bearer {_token()}"}
 
-    # Reset si un test précédent a déjà démarré ces visites.
+    # Reset si un test précédent a déjà démarré ces sessions.
     import main
     for v in main.MOCK_SESSIONS:
         if v["id"] == "vis_001":
@@ -37,9 +37,9 @@ async def test_start_visit_sets_started_at(client: AsyncClient):
 
     fetched = await client.get("/sessions/vis_001", headers=headers)
     assert fetched.status_code == 200
-    visit = fetched.json()
-    assert visit["status"] == "in_progress"
-    assert visit["started_at"] is not None
+    session = fetched.json()
+    assert session["status"] == "in_progress"
+    assert session["started_at"] is not None
 
 
 @pytest.mark.anyio

@@ -1,11 +1,13 @@
 import Foundation
 
-struct Visit: Identifiable, Codable, Equatable {
+/// Une session IV : ce que la nurse effectue chez le client.
+/// Brief : table `sessions`. Modèle private pay — pas de champs insurance/copay.
+struct Session: Identifiable, Codable, Equatable {
     let id: String
     let client_id: String
     var client_name: String?
-    let service_type: String
-    var status: VisitStatus
+    let formulation_name: String
+    var status: SessionStatus
     let scheduled_at: Date
     let created_at: Date
     let address: String
@@ -14,23 +16,28 @@ struct Visit: Identifiable, Codable, Equatable {
     let notes: String?
     let total: Double
     var estimated_duration: Int?
-    var copay: Double?
-    var insurance_claimed: Bool?
     var started_at: Date?
     var completed_at: Date?
 
-    enum VisitStatus: String, Codable, CaseIterable {
+    /// Cycle de vie d'une session (brief : 6 statuts).
+    /// Transitions normales :
+    ///   scheduled → en_route → in_progress → completed
+    ///   scheduled → cancelled
+    ///   scheduled → no_show (si le client n'est pas présent)
+    enum SessionStatus: String, Codable, CaseIterable {
         case scheduled = "scheduled"
+        case en_route = "en_route"
         case in_progress = "in_progress"
         case completed = "completed"
         case cancelled = "cancelled"
+        case no_show = "no_show"
     }
 
     enum CodingKeys: String, CodingKey {
         case id
         case client_id
         case client_name
-        case service_type = "visit_type"
+        case formulation_name
         case status
         case scheduled_at
         case created_at
@@ -40,13 +47,11 @@ struct Visit: Identifiable, Codable, Equatable {
         case notes
         case total = "total_amount"
         case estimated_duration
-        case copay
-        case insurance_claimed
         case started_at
         case completed_at
     }
 
-    static func == (lhs: Visit, rhs: Visit) -> Bool {
+    static func == (lhs: Session, rhs: Session) -> Bool {
         lhs.id == rhs.id
     }
 }

@@ -22,7 +22,7 @@ def _visit(id_: str, client_id: str, lat: float | None = None, lng: float | None
         "client_id": client_id,
         "nurse_id": "usr_001",
         "scheduled_at": datetime.now().isoformat(),
-        "visit_type": "Primary_Care",
+        "formulation_name": "Primary_Care",
         "status": "scheduled",
         "address": "n/a",
         "latitude": lat,
@@ -49,13 +49,13 @@ async def test_optimize_falls_back_without_mapbox_token(client: AsyncClient, mon
     import main
     monkeypatch.setattr(main, "MAPBOX_ACCESS_TOKEN", None)
 
-    visits = [
+    sessions = [
         _visit("vis_001", "pat_001", 48.8688, 2.3315),
         _visit("vis_002", "pat_002", 48.8703, 2.2855),
         _visit("vis_003", "pat_003", 48.8730, 2.3372),
     ]
     r = await client.post(
-        "/optimize/routes", json=visits, headers={"Authorization": f"Bearer {_token()}"}
+        "/optimize/routes", json=sessions, headers={"Authorization": f"Bearer {_token()}"}
     )
     assert r.status_code == 200
     body = r.json()

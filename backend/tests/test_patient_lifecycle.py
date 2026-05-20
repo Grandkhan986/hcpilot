@@ -21,7 +21,7 @@ def _reset_state():
     # Restore patient archived state
     for p in main.MOCK_CLIENTS:
         p["archived_at"] = None
-    # Reset visits to scheduled with future dates
+    # Reset sessions to scheduled with future dates
     future = (datetime.now() + timedelta(hours=2)).isoformat()
     for v in main.MOCK_SESSIONS:
         v["status"] = "scheduled"
@@ -38,7 +38,7 @@ async def test_archive_patient_deletes_scheduled_visits(client: AsyncClient):
     r = await client.delete("/clients/pat_001", headers=headers)
     assert r.status_code == 200
     body = r.json()
-    assert body["deleted_scheduled_visits"] >= 1
+    assert body["deleted_scheduled_sessions"] >= 1
 
     # Le patient sort de la liste par défaut
     actives = await client.get("/clients", headers=headers)
@@ -50,9 +50,9 @@ async def test_archive_patient_deletes_scheduled_visits(client: AsyncClient):
     archived_ids = [p["id"] for p in archived.json()]
     assert "pat_001" in archived_ids
 
-    # Visite planifiée du patient → supprimée (404)
-    visit = await client.get("/sessions/vis_001", headers=headers)
-    assert visit.status_code == 404
+    # Session planifiée du patient → supprimée (404)
+    session = await client.get("/sessions/vis_001", headers=headers)
+    assert session.status_code == 404
 
 
 @pytest.mark.anyio
@@ -66,10 +66,10 @@ async def test_archive_keeps_completed_visits(client: AsyncClient):
 
     r = await client.delete("/clients/pat_002", headers=headers)
     assert r.status_code == 200
-    # Aucune visite supprimée (la seule visite était completed)
-    assert r.json()["deleted_scheduled_visits"] == 0
+    # Aucune session supprimée (la seule session était completed)
+    assert r.json()["deleted_scheduled_sessions"] == 0
 
-    # La visite completed est toujours là (audit/facturation)
+    # La session completed est toujours là (audit/facturation)
     v = await client.get("/sessions/vis_002", headers=headers)
     assert v.status_code == 200
     assert v.json()["status"] == "completed"
@@ -112,7 +112,7 @@ async def test_address_change_syncs_future_scheduled_visits(client: AsyncClient)
         headers=headers,
     )
     assert r.status_code == 200
-    assert r.json()["synced_future_visits"] >= 1
+    assert r.json()["synced_future_sessions"] >= 1
 
     v = (await client.get("/sessions/vis_001", headers=headers)).json()
     assert v["address"] == new_addr
@@ -123,7 +123,7 @@ async def test_address_change_does_not_touch_past_or_in_progress(client: AsyncCl
     _reset_state()
     headers = {"Authorization": f"Bearer {_token()}"}
 
-    # Visite déjà en cours → ne doit pas être resync'ée
+    # Session déjà en cours → ne doit pas être resync'ée
     await client.post("/sessions/vis_001/start", headers=headers)
     original_addr = (await client.get("/sessions/vis_001", headers=headers)).json()["address"]
 
@@ -168,6 +168,6 @@ async def test_visits_filterable_by_client_id(client: AsyncClient):
 
     r = await client.get("/sessions?client_id=pat_001", headers=headers)
     assert r.status_code == 200
-    visits = r.json()
-    assert all(v["client_id"] == "pat_001" for v in visits)
-    assert len(visits) >= 1
+    sessions = r.json()
+    assert all(v["client_id"] == "pat_001" for v in sessions)
+    assert len(sessions) >= 1

@@ -10,7 +10,7 @@ enum ConsentPDFBuilder {
     struct Input {
         let documentId: String
         let nurseName: String
-        let patientName: String
+        let clientName: String
         let formulationName: String
         let consentText: String
         let checkpoints: [ConsentCheckpoint]
@@ -73,7 +73,7 @@ enum ConsentPDFBuilder {
 
     private static func drawIdentity(input: Input, y: CGFloat) -> CGFloat {
         let lines = [
-            "Patient : \(input.patientName)",
+            "Client : \(input.clientName)",
             "Formulation : \(input.formulationName)",
             "Signé le : \(formattedDate(input.signedAt))",
         ]

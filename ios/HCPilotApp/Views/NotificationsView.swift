@@ -3,12 +3,12 @@ import UserNotifications
 
 /// Tableau de bord des notifications locales : permission, count programmé,
 /// test rapide. Les rappels sont reprogrammés automatiquement à chaque chargement
-/// des écrans Conformité (compliance) et Accueil (visites).
+/// des écrans Conformité (compliance) et Accueil (sessions).
 struct NotificationsView: View {
     @State private var status: UNAuthorizationStatus = .notDetermined
     @State private var totalScheduled = 0
     @State private var complianceScheduled = 0
-    @State private var visitScheduled = 0
+    @State private var sessionScheduled = 0
     @State private var isLoading = true
     @State private var feedback: String?
 
@@ -42,9 +42,9 @@ struct NotificationsView: View {
                         Text("\(complianceScheduled)").foregroundStyle(.secondary)
                     }
                     HStack {
-                        Label("Rappels de visites", systemImage: "calendar")
+                        Label("Rappels de sessions", systemImage: "calendar")
                         Spacer()
-                        Text("\(visitScheduled)").foregroundStyle(.secondary)
+                        Text("\(sessionScheduled)").foregroundStyle(.secondary)
                     }
                     HStack {
                         Text("Total programmé").fontWeight(.semibold)
@@ -63,7 +63,7 @@ struct NotificationsView: View {
                     Text("• Contrat MD : J-60, J-30, J-7")
                     Text("• Standing order : J-30, J-7")
                     Text("• Audit MD : J-7 et jour J")
-                    Text("• Visite : J-1 (8h) et H-2")
+                    Text("• Session : J-1 (8h) et H-2")
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -110,7 +110,7 @@ struct NotificationsView: View {
         defer { isLoading = false }
         status = await NotificationService.shared.authorizationStatus()
         complianceScheduled = await NotificationService.shared.pendingByPrefix("compliance:")
-        visitScheduled = await NotificationService.shared.pendingByPrefix("visit:")
+        sessionScheduled = await NotificationService.shared.pendingByPrefix("session:")
         totalScheduled = await NotificationService.shared.pendingCount()
     }
 

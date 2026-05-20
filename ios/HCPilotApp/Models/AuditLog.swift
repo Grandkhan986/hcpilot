@@ -3,7 +3,7 @@ import Foundation
 struct AuditLogEntry: Identifiable, Codable {
     let id: String
     let nurse_id: String?
-    let entity_type: String  // consents | patients | visits | inventory_transactions
+    let entity_type: String  // consents | clients | sessions | inventory_transactions
     let entity_id: String
     let action: String       // create | read | update | delete | export
     let changes: [String: AnyDecodable]?

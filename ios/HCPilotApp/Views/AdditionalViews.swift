@@ -2,7 +2,7 @@ import SwiftUI
 
 // Ce fichier contenait des vues dupliquées.
 // Toutes les vues sont maintenant dans leurs fichiers respectifs :
-// - VisitsListView.swift (VisitDetailView, SearchBar, StatusBadge, NewVisitView)
+// - SessionsListView.swift (SessionDetailView, SearchBar, StatusBadge, NewSessionView)
 // - InvoicesView.swift (InvoiceDetailView, InvoiceListItem, InvoiceStatusBadge, NewInvoiceView)
-// - PatientsView.swift (PatientDetailView, PatientListItem, InfoRow)
-// - HomeViewModel.swift (StatCard, VisitListItem, StockStatusCard)
+// - ClientsView.swift (ClientDetailView, ClientListItem, InfoRow)
+// - HomeViewModel.swift (StatCard, SessionListItem, StockStatusCard)

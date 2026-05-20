@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// Sélecteur de lot utilisé à la fin d'une visite. Présenté avant l'appel à
-/// `/visits/{id}/complete` : on enregistre l'usage du lot (décrément + traçabilité)
-/// puis on clôture la visite. Possibilité de "Sans scan" si pas de lot dispo
+/// Sélecteur de lot utilisé à la fin d'une session. Présenté avant l'appel à
+/// `/sessions/{id}/complete` : on enregistre l'usage du lot (décrément + traçabilité)
+/// puis on clôture la session. Possibilité de "Sans scan" si pas de lot dispo
 /// (le complete est alors fait sans entrée d'inventaire).
 struct LotUsageSheet: View {
-    let visit: Visit
+    let session: Session
     /// Si fourni, filtre les lots dont le `product_name` matche (utile quand
     /// on connaît la formulation via un consentement déjà signé).
     let preferredProductName: String?
@@ -148,11 +148,11 @@ struct LotUsageSheet: View {
         do {
             _ = try await APIService.shared.recordUsage(RecordUsageRequest(
                 lot_id: lot.id,
-                session_id: visit.id,
+                session_id: session.id,
                 quantity: quantity,
                 notes: notes.isEmpty ? nil : notes
             ))
-            _ = try await APIService.shared.completeVisit(visitId: visit.id)
+            _ = try await APIService.shared.completeSession(sessionId: session.id)
             onCompleted()
             dismiss()
         } catch {
@@ -165,7 +165,7 @@ struct LotUsageSheet: View {
         errorMessage = nil
         defer { isSubmitting = false }
         do {
-            _ = try await APIService.shared.completeVisit(visitId: visit.id)
+            _ = try await APIService.shared.completeSession(sessionId: session.id)
             onCompleted()
             dismiss()
         } catch {

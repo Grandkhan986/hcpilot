@@ -1,8 +1,8 @@
 import SwiftUI
 
-struct VisitsListView: View {
-    @StateObject private var viewModel = VisitsViewModel()
-    @State private var showNewVisitSheet = false
+struct SessionsListView: View {
+    @StateObject private var viewModel = SessionsViewModel()
+    @State private var showNewSessionSheet = false
 
     var body: some View {
         NavigationView {
@@ -27,14 +27,14 @@ struct VisitsListView: View {
                     Spacer()
                 } else {
                     List {
-                        ForEach(viewModel.filteredVisits) { visit in
-                            NavigationLink(destination: VisitDetailView(visit: visit, onAction: { viewModel.refresh() })) {
-                                VisitListItem(visit: visit)
+                        ForEach(viewModel.filteredSessions) { session in
+                            NavigationLink(destination: SessionDetailView(session: session, onAction: { viewModel.refresh() })) {
+                                SessionListItem(session: session)
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                if visit.status != .completed && visit.status != .cancelled {
+                                if session.status != .completed && session.status != .cancelled {
                                     Button(role: .destructive) {
-                                        Task { await viewModel.cancel(visit) }
+                                        Task { await viewModel.cancel(session) }
                                     } label: {
                                         Label("Annuler", systemImage: "xmark.circle")
                                     }
@@ -54,14 +54,14 @@ struct VisitsListView: View {
                         NavigationLink(destination: RouteMapView()) {
                             Image(systemName: "map")
                         }
-                        Button(action: { showNewVisitSheet = true }) {
+                        Button(action: { showNewSessionSheet = true }) {
                             Image(systemName: "plus")
                         }
                     }
                 }
             }
-            .sheet(isPresented: $showNewVisitSheet) {
-                NewVisitView(onCreated: { viewModel.refresh() })
+            .sheet(isPresented: $showNewSessionSheet) {
+                NewSessionView(onCreated: { viewModel.refresh() })
             }
             .onAppear { viewModel.load() }
         }
@@ -86,12 +86,12 @@ struct SearchBar: View {
     }
 }
 
-// MARK: - VisitsViewModel
+// MARK: - SessionsViewModel
 
 @MainActor
-class VisitsViewModel: ObservableObject {
-    @Published var visits: [Visit] = []
-    @Published var patients: [Patient] = []
+class SessionsViewModel: ObservableObject {
+    @Published var sessions: [Session] = []
+    @Published var clients: [Client] = []
     @Published var searchTerm = ""
     @Published var filter = "all"
     @Published var isLoading = false
@@ -99,12 +99,12 @@ class VisitsViewModel: ObservableObject {
 
     private let apiService = APIService.shared
 
-    var filteredVisits: [Visit] {
-        visits.filter { visit in
+    var filteredSessions: [Session] {
+        sessions.filter { session in
             let matchesSearch = searchTerm.isEmpty ||
-                (visit.client_name?.lowercased().contains(searchTerm.lowercased()) ?? false) ||
-                visit.service_type.lowercased().contains(searchTerm.lowercased())
-            let matchesFilter = filter == "all" || visit.status.rawValue == filter
+                (session.client_name?.lowercased().contains(searchTerm.lowercased()) ?? false) ||
+                session.formulation_name.lowercased().contains(searchTerm.lowercased())
+            let matchesFilter = filter == "all" || session.status.rawValue == filter
             return matchesSearch && matchesFilter
         }
     }
@@ -117,9 +117,9 @@ class VisitsViewModel: ObservableObject {
         Task { await fetchData() }
     }
 
-    func cancel(_ visit: Visit) async {
+    func cancel(_ session: Session) async {
         do {
-            try await apiService.deleteVisit(id: visit.id)
+            try await apiService.deleteSession(id: session.id)
             await fetchData()
         } catch {
             errorMessage = "Erreur annulation : \(error.localizedDescription)"
@@ -129,15 +129,15 @@ class VisitsViewModel: ObservableObject {
     private func fetchData() async {
         isLoading = true
         do {
-            async let v = apiService.getVisits()
-            async let p = apiService.getPatients()
-            visits = try await v
-            patients = try await p
-            // Enrich visits with patient names
-            for i in visits.indices {
-                if visits[i].client_name == nil,
-                   let patient = patients.first(where: { $0.id == visits[i].client_id }) {
-                    visits[i].client_name = patient.full_name
+            async let v = apiService.getSessions()
+            async let p = apiService.getClients()
+            sessions = try await v
+            clients = try await p
+            // Enrich sessions with client names
+            for i in sessions.indices {
+                if sessions[i].client_name == nil,
+                   let client = clients.first(where: { $0.id == sessions[i].client_id }) {
+                    sessions[i].client_name = client.full_name
                 }
             }
         } catch {
@@ -147,10 +147,10 @@ class VisitsViewModel: ObservableObject {
     }
 }
 
-// MARK: - VisitDetailView
+// MARK: - SessionDetailView
 
-struct VisitDetailView: View {
-    let visit: Visit
+struct SessionDetailView: View {
+    let session: Session
     var onAction: () -> Void
     @State private var showEditForm = false
     @State private var showCancelConfirm = false
@@ -165,21 +165,21 @@ struct VisitDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Patient Info
+                // Client Info
                 HStack {
                     Circle()
                         .fill(Color.blue)
                         .frame(width: 50, height: 50)
                         .overlay(
-                            Text(String(visit.client_name?.prefix(2) ?? "?").uppercased())
+                            Text(String(session.client_name?.prefix(2) ?? "?").uppercased())
                                 .foregroundColor(.white)
                                 .font(.caption2)
                         )
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(visit.client_name ?? "Client")
+                        Text(session.client_name ?? "Client")
                             .font(.headline)
-                        Text(visit.service_type.replacingOccurrences(of: "_", with: " "))
+                        Text(session.formulation_name.replacingOccurrences(of: "_", with: " "))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -187,9 +187,9 @@ struct VisitDetailView: View {
 
                 // Status
                 HStack {
-                    StatusBadge(status: visit.status)
+                    StatusBadge(status: session.status)
                     Spacer()
-                    Text(visit.scheduled_at, formatter: Self.dateFormatter)
+                    Text(session.scheduled_at, formatter: Self.dateFormatter)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -198,7 +198,7 @@ struct VisitDetailView: View {
                 HStack {
                     Image(systemName: "location")
                         .foregroundColor(.red)
-                    Text(visit.address)
+                    Text(session.address)
                         .font(.subheadline)
                 }
 
@@ -206,7 +206,7 @@ struct VisitDetailView: View {
                 consentSection
 
                 // Notes
-                if let notes = visit.notes, !notes.isEmpty {
+                if let notes = session.notes, !notes.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Notes")
                             .font(.headline)
@@ -219,7 +219,7 @@ struct VisitDetailView: View {
                 // Total
                 HStack {
                     Spacer()
-                    Text(String(format: "Total: %.2f €", visit.total))
+                    Text(String(format: "Total: %.2f €", session.total))
                         .font(.headline)
                         .fontWeight(.bold)
                 }
@@ -229,8 +229,8 @@ struct VisitDetailView: View {
 
                 // Actions
                 VStack(spacing: 8) {
-                    if visit.status == .scheduled {
-                        Button(action: { startVisit() }) {
+                    if session.status == .scheduled {
+                        Button(action: { startSession() }) {
                             Text("Commencer la session")
                                 .font(.headline)
                         }
@@ -241,7 +241,7 @@ struct VisitDetailView: View {
                         .cornerRadius(8)
                     }
 
-                    if visit.status == .in_progress {
+                    if session.status == .in_progress {
                         Button(action: { showLotUsageSheet = true }) {
                             Text("Terminer la session")
                                 .font(.headline)
@@ -261,7 +261,7 @@ struct VisitDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
-                    if visit.status != .completed && visit.status != .cancelled {
+                    if session.status != .completed && session.status != .cancelled {
                         Button { showEditForm = true } label: {
                             Label("Modifier", systemImage: "pencil")
                         }
@@ -275,12 +275,12 @@ struct VisitDetailView: View {
             }
         }
         .sheet(isPresented: $showEditForm) {
-            VisitFormView(visit: visit) { onAction() }
+            SessionFormView(session: session) { onAction() }
         }
         .sheet(isPresented: $showConsentFlow) {
             ConsentFlowView(
-                visit: visit,
-                patientName: visit.client_name ?? "Client",
+                session: session,
+                clientName: session.client_name ?? "Client",
                 nurseName: authViewModel.user?.full_name ?? "Soignant"
             ) {
                 Task { await loadConsent() }
@@ -294,16 +294,16 @@ struct VisitDetailView: View {
         }
         .sheet(isPresented: $showLotUsageSheet) {
             LotUsageSheet(
-                visit: visit,
+                session: session,
                 preferredProductName: consent?.formulation_name,
                 onCompleted: { onAction() }
             )
         }
         .alert("Annuler cette session ?", isPresented: $showCancelConfirm) {
             Button("Non", role: .cancel) { }
-            Button("Oui, annuler", role: .destructive) { cancelVisit() }
+            Button("Oui, annuler", role: .destructive) { cancelSession() }
         } message: {
-            Text("La visite sera marquée comme annulée. Cette action est traçée pour l'audit.")
+            Text("La session sera marquée comme annulée. Cette action est traçée pour l'audit.")
         }
         .task { await loadConsent() }
     }
@@ -349,7 +349,7 @@ struct VisitDetailView: View {
                 .padding()
                 .background(Color.green.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-            } else if visit.status == .scheduled || visit.status == .in_progress {
+            } else if session.status == .scheduled || session.status == .in_progress {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
@@ -378,7 +378,7 @@ struct VisitDetailView: View {
                 .background(Color.orange.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             } else {
-                Text("Aucun consentement enregistré pour cette visite.")
+                Text("Aucun consentement enregistré pour cette session.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 6)
@@ -390,7 +390,7 @@ struct VisitDetailView: View {
         consentLoading = true
         defer { consentLoading = false }
         do {
-            consent = try await APIService.shared.getConsent(forVisit: visit.id)
+            consent = try await APIService.shared.getConsent(forSession: session.id)
         } catch {
             consent = nil
         }
@@ -405,10 +405,10 @@ struct VisitDetailView: View {
         }
     }
 
-    private func cancelVisit() {
+    private func cancelSession() {
         Task {
             do {
-                try await APIService.shared.deleteVisit(id: visit.id)
+                try await APIService.shared.deleteSession(id: session.id)
                 onAction()
             } catch {
                 print("Erreur annulation: \(error)")
@@ -416,10 +416,10 @@ struct VisitDetailView: View {
         }
     }
 
-    private func startVisit() {
+    private func startSession() {
         Task {
             do {
-                _ = try await APIService.shared.startVisit(visitId: visit.id)
+                _ = try await APIService.shared.startSession(sessionId: session.id)
                 onAction()
             } catch {
                 print("Erreur démarrage: \(error)")
@@ -427,10 +427,10 @@ struct VisitDetailView: View {
         }
     }
 
-    private func completeVisit() {
+    private func completeSession() {
         Task {
             do {
-                _ = try await APIService.shared.completeVisit(visitId: visit.id)
+                _ = try await APIService.shared.completeSession(sessionId: session.id)
                 onAction()
             } catch {
                 print("Erreur terminaison: \(error)")
@@ -448,7 +448,7 @@ struct VisitDetailView: View {
 }
 
 struct StatusBadge: View {
-    let status: Visit.VisitStatus
+    let status: Session.SessionStatus
 
     var body: some View {
         HStack(spacing: 4) {
@@ -476,9 +476,11 @@ struct StatusBadge: View {
     private var label: String {
         switch status {
         case .scheduled: return "Planifiée"
+        case .en_route: return "En route"
         case .in_progress: return "En cours"
         case .completed: return "Terminée"
         case .cancelled: return "Annulée"
+        case .no_show: return "Absent"
         }
     }
 
@@ -501,14 +503,14 @@ struct StatusBadge: View {
     }
 }
 
-// MARK: - NewVisitView
+// MARK: - NewSessionView
 
-struct NewVisitView: View {
+struct NewSessionView: View {
     @Environment(\.dismiss) var dismiss
     var onCreated: () -> Void
 
-    @State private var patients: [Patient] = []
-    @State private var selectedPatientId: String = ""
+    @State private var clients: [Client] = []
+    @State private var selectedClientId: String = ""
     @State private var serviceType = "IV_Hydration"
     @State private var scheduledAt: Date = Date()
     @State private var address = ""
@@ -516,35 +518,35 @@ struct NewVisitView: View {
     @State private var estimatedDuration: Int = 60
     @State private var totalAmount: String = "0"
     @State private var errorMessage: String?
-    @State private var isLoadingPatients = true
+    @State private var isLoadingClients = true
 
     let serviceTypes = ["IV_Hydration", "Post_Op", "Primary_Care", "Vaccination", "Consultation"]
 
-    private var selectedPatient: Patient? {
-        patients.first(where: { $0.id == selectedPatientId })
+    private var selectedClient: Client? {
+        clients.first(where: { $0.id == selectedClientId })
     }
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Client")) {
-                    if isLoadingPatients {
+                    if isLoadingClients {
                         HStack { ProgressView(); Text("Chargement…").foregroundStyle(.secondary) }
-                    } else if patients.isEmpty {
-                        Text("Aucun patient actif — créez d'abord un patient.")
+                    } else if clients.isEmpty {
+                        Text("Aucun client actif — créez d'abord un client.")
                             .font(.caption)
                             .foregroundColor(.red)
                     } else {
-                        Picker("Client", selection: $selectedPatientId) {
-                            ForEach(patients) { p in
+                        Picker("Client", selection: $selectedClientId) {
+                            ForEach(clients) { p in
                                 Text(p.full_name).tag(p.id)
                             }
                         }
-                        .onChange(of: selectedPatientId) { _, newId in
-                            // Auto-remplit l'adresse depuis le patient sélectionné
+                        .onChange(of: selectedClientId) { _, newId in
+                            // Auto-remplit l'adresse depuis le client sélectionné
                             // si l'utilisateur n'a pas encore tapé une adresse custom.
-                            if let p = patients.first(where: { $0.id == newId }),
-                               address.isEmpty || patients.contains(where: { $0.address == address }) {
+                            if let p = clients.first(where: { $0.id == newId }),
+                               address.isEmpty || clients.contains(where: { $0.address == address }) {
                                 address = p.address ?? ""
                             }
                         }
@@ -564,8 +566,8 @@ struct NewVisitView: View {
                 Section(header: Text("Adresse")) {
                     TextField("Adresse", text: $address, axis: .vertical)
                         .lineLimit(1...3)
-                    if let p = selectedPatient, p.address != address, !address.isEmpty {
-                        Text("⚠ Adresse différente de l'adresse du patient")
+                    if let p = selectedClient, p.address != address, !address.isEmpty {
+                        Text("⚠ Adresse différente de l'adresse du client")
                             .font(.caption2)
                             .foregroundStyle(.orange)
                     }
@@ -589,58 +591,56 @@ struct NewVisitView: View {
                     Button("Annuler") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Créer") { createVisit() }
-                        .disabled(selectedPatientId.isEmpty || address.isEmpty)
+                    Button("Créer") { createSession() }
+                        .disabled(selectedClientId.isEmpty || address.isEmpty)
                 }
             }
-            .task { await loadPatients() }
+            .task { await loadClients() }
         }
     }
 
-    private func loadPatients() async {
-        isLoadingPatients = true
-        defer { isLoadingPatients = false }
+    private func loadClients() async {
+        isLoadingClients = true
+        defer { isLoadingClients = false }
         do {
-            patients = try await APIService.shared.getPatients(archived: false)
-            if selectedPatientId.isEmpty, let first = patients.first {
-                selectedPatientId = first.id
+            clients = try await APIService.shared.getClients(archived: false)
+            if selectedClientId.isEmpty, let first = clients.first {
+                selectedClientId = first.id
                 address = first.address ?? ""
             }
         } catch {
-            errorMessage = "Impossible de charger les patients : \(error.localizedDescription)"
+            errorMessage = "Impossible de charger les clients : \(error.localizedDescription)"
         }
     }
 
-    private func createVisit() {
-        guard let patient = selectedPatient else { return }
-        // Si l'adresse est inchangée par rapport à celle du patient, on laisse
+    private func createSession() {
+        guard let client = selectedClient else { return }
+        // Si l'adresse est inchangée par rapport à celle du client, on laisse
         // le backend copier ses coords. Si l'adresse a été éditée, on envoie nil
         // pour les coords — le backend re-géocodera si un token Mapbox est dispo.
-        let useCustomAddress = address != (patient.address ?? "")
+        let useCustomAddress = address != (client.address ?? "")
         let total = Double(totalAmount.replacingOccurrences(of: ",", with: ".")) ?? 0
 
-        let newVisit = Visit(
+        let newSession = Session(
             id: UUID().uuidString,
-            client_id: patient.id,
-            client_name: patient.full_name,
-            service_type: serviceType,
+            client_id: client.id,
+            client_name: client.full_name,
+            formulation_name: serviceType,
             status: .scheduled,
             scheduled_at: scheduledAt,
             created_at: Date(),
             address: address,
-            latitude: useCustomAddress ? nil : patient.latitude,
-            longitude: useCustomAddress ? nil : patient.longitude,
+            latitude: useCustomAddress ? nil : client.latitude,
+            longitude: useCustomAddress ? nil : client.longitude,
             notes: notes.isEmpty ? nil : notes,
             total: total,
             estimated_duration: estimatedDuration,
-            copay: nil,
-            insurance_claimed: nil,
             started_at: nil,
             completed_at: nil
         )
         Task {
             do {
-                _ = try await APIService.shared.createVisit(visit: newVisit)
+                _ = try await APIService.shared.createSession(session: newSession)
                 onCreated()
                 dismiss()
             } catch {
@@ -704,6 +704,6 @@ private struct PDFViewWrapper: UIViewRepresentable {
 }
 
 #Preview {
-    VisitsListView()
+    SessionsListView()
         .environmentObject(AuthViewModel())
 }

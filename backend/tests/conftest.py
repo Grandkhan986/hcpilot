@@ -12,7 +12,7 @@ import main
 from main import app
 
 # Snapshot initial des mocks pour réinitialiser entre chaque test (l'archivage
-# hard-supprime des visites, l'édition mute en place — sans reset, les tests
+# hard-supprime des sessions, l'édition mute en place — sans reset, les tests
 # se contaminent les uns les autres).
 _INITIAL_PATIENTS = copy.deepcopy(main.MOCK_CLIENTS)
 _INITIAL_VISITS = copy.deepcopy(main.MOCK_SESSIONS)

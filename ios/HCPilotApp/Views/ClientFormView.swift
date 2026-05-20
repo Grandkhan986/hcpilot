@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// Formulaire patient — utilisé en création (mode `.create`) ou édition (`.edit`).
+/// Formulaire client — utilisé en création (mode `.create`) ou édition (`.edit`).
 /// En mode édition, envoie un PATCH-like (champs inchangés non re-écrits côté backend).
-struct PatientFormView: View {
+struct ClientFormView: View {
     enum Mode {
         case create
-        case edit(Patient)
+        case edit(Client)
     }
 
     let mode: Mode
@@ -116,7 +116,7 @@ struct PatientFormView: View {
             switch mode {
             case .create:
                 let now = ISO8601DateFormatter().string(from: Date())
-                let newPatient = Patient(
+                let newClient = Client(
                     id: UUID().uuidString,
                     first_name: firstName,
                     last_name: lastName,
@@ -133,12 +133,12 @@ struct PatientFormView: View {
                     created_at: now,
                     updated_at: nil
                 )
-                _ = try await APIService.shared.createPatient(patient: newPatient)
+                _ = try await APIService.shared.createClient(client: newClient)
                 onSaved()
                 dismiss()
 
             case .edit(let p):
-                let patch = APIService.PatientPatch(
+                let patch = APIService.ClientPatch(
                     first_name: changed(firstName, p.first_name),
                     last_name: changed(lastName, p.last_name),
                     email: changed(email, p.email),
@@ -149,9 +149,9 @@ struct PatientFormView: View {
                     medical_history: changed(medicalHistory, p.medical_history),
                     allergies: changed(allergies, p.allergies)
                 )
-                let result = try await APIService.shared.updatePatient(id: p.id, patch: patch)
-                if let n = result.synced_future_visits, n > 0 {
-                    infoMessage = "\(n) visite\(n > 1 ? "s" : "") future\(n > 1 ? "s" : "") resynchronisée\(n > 1 ? "s" : "")."
+                let result = try await APIService.shared.updateClient(id: p.id, patch: patch)
+                if let n = result.synced_future_sessions, n > 0 {
+                    infoMessage = "\(n) session\(n > 1 ? "s" : "") future\(n > 1 ? "s" : "") resynchronisée\(n > 1 ? "s" : "")."
                     // Petit délai pour que l'info soit lue avant le dismiss
                     try? await Task.sleep(nanoseconds: 700_000_000)
                 }

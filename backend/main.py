@@ -105,27 +105,27 @@ class Client(BaseModel):
     medical_history: Optional[str] = None
     allergies: Optional[str] = None
     # Soft delete : la fiche reste consultable en "Archives" mais sort de la liste
-    # principale. Conserve l'historique des visites/factures pour la facturation
+    # principale. Conserve l'historique des sessions/factures pour la facturation
     # et l'audit HIPAA.
     archived_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
 class Session(BaseModel):
+    """Brief : table `sessions` — une perfusion IV chez un client.
+    Modèle private pay : pas de champs insurance/copay."""
     id: str
     client_id: str
     nurse_id: str
     scheduled_at: datetime
-    visit_type: str  # IV_Hydration, Post_Op, Primary_Care, etc.
-    status: str  # scheduled, in_progress, completed, cancelled
+    formulation_name: str  # ex: "Myers Cocktail", "NAD+ 500mg"
+    status: str  # scheduled | en_route | in_progress | completed | cancelled | no_show
     address: str
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     estimated_duration: int  # minutes
     notes: Optional[str] = None
     total_amount: float
-    copay: Optional[float] = None
-    insurance_claimed: Optional[bool] = False
     # Clock-in / clock-out — drive duration calculation, billing, audit trail.
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
@@ -153,7 +153,7 @@ class ConsentCheckpoint(BaseModel):
 
 
 class Consent(BaseModel):
-    """Consentement éclairé signé pour une visite IV.
+    """Consentement éclairé signé pour une session IV.
 
     Capture l'ensemble des preuves pour la conformité HIPAA + jurisprudence US :
     snapshot du texte au moment de la signature, géoloc, IP, device, signature
@@ -183,7 +183,7 @@ class AuditLog(BaseModel):
     Brief : conservation 7 ans minimum, jamais supprimée."""
     id: str
     nurse_id: Optional[str]
-    entity_type: str  # consents | patients | visits | inventory_lots | inventory_transactions
+    entity_type: str  # consents | patients | sessions | inventory_lots | inventory_transactions
     entity_id: str
     action: str  # create | read | update | delete | export
     changes: Optional[dict] = None
@@ -466,31 +466,31 @@ MOCK_SESSIONS = [
     {
         "id": "vis_001", "client_id": "pat_001", "nurse_id": "usr_001",
         "scheduled_at": datetime.now().replace(hour=9, minute=0).isoformat(),
-        "visit_type": "Primary_Care", "status": "scheduled",
+        "formulation_name": "Myers Cocktail", "status": "scheduled",
         "address": "12 Rue de la Paix, 75002 Paris",
         "latitude": 48.8688, "longitude": 2.3315,
-        "estimated_duration": 45, "notes": "Contrôle glycémie + tension",
-        "total_amount": 75.00, "copay": 23.00, "insurance_claimed": True,
+        "estimated_duration": 60, "notes": "Recharge énergie post-épuisement",
+        "total_amount": 175.00,
         "created_at": "2024-06-01T08:00:00", "updated_at": "2024-06-01T08:00:00"
     },
     {
         "id": "vis_002", "client_id": "pat_002", "nurse_id": "usr_001",
         "scheduled_at": datetime.now().replace(hour=11, minute=0).isoformat(),
-        "visit_type": "Post_Op", "status": "scheduled",
+        "formulation_name": "NAD+ 250mg", "status": "scheduled",
         "address": "45 Avenue Victor Hugo, 75016 Paris",
         "latitude": 48.8703, "longitude": 2.2855,
-        "estimated_duration": 60, "notes": "Rééducation post-op J+14",
-        "total_amount": 120.00, "copay": 0.00, "insurance_claimed": True,
+        "estimated_duration": 90, "notes": "Premier traitement NAD+ — démarrage débit lent",
+        "total_amount": 350.00,
         "created_at": "2024-06-01T08:00:00", "updated_at": "2024-06-01T08:00:00"
     },
     {
         "id": "vis_003", "client_id": "pat_003", "nurse_id": "usr_001",
         "scheduled_at": datetime.now().replace(hour=14, minute=30).isoformat(),
-        "visit_type": "IV_Hydration", "status": "scheduled",
+        "formulation_name": "NAD+ 500mg", "status": "scheduled",
         "address": "8 Boulevard Haussmann, 75009 Paris",
         "latitude": 48.8730, "longitude": 2.3372,
-        "estimated_duration": 90, "notes": "Perfusion IV + monitoring cardiaque",
-        "total_amount": 180.00, "copay": 45.00, "insurance_claimed": False,
+        "estimated_duration": 150, "notes": "Dose haute — monitoring TA + pouls",
+        "total_amount": 650.00,
         "created_at": "2024-06-01T08:00:00", "updated_at": "2024-06-01T08:00:00"
     },
 ]
@@ -952,8 +952,8 @@ async def update_patient(client_id: str, patient: dict, payload: dict = Depends(
 
     Si l'adresse change :
       - re-géocode l'adresse (sauf si lat/lng forcés explicitement)
-      - sync les visites futures (status=scheduled ET scheduled_at >= maintenant)
-        avec la nouvelle adresse + coords. Les visites passées/en cours/terminées
+      - sync les sessions futures (status=scheduled ET scheduled_at >= maintenant)
+        avec la nouvelle adresse + coords. Les sessions passées/en cours/terminées
         gardent leur snapshot historique pour préserver la facturation et l'audit.
     """
     patient = {k: v for k, v in patient.items() if v is not None}
@@ -997,7 +997,7 @@ async def update_patient(client_id: str, patient: dict, payload: dict = Depends(
                     v["longitude"] = new_lng
                     v["updated_at"] = datetime.now().isoformat()
                     synced_visits += 1
-            return {**merged, "synced_future_visits": synced_visits}
+            return {**merged, "synced_future_sessions": synced_visits}
     raise HTTPException(status_code=404, detail="Client non trouvé")
 
 
@@ -1010,11 +1010,11 @@ async def archive_patient(
     """Archive (soft-delete) un patient.
 
     - Le patient sort de la liste principale, reste consultable via ?archived=true.
-    - TOUTES ses visites status=scheduled sont SUPPRIMÉES (hard delete) —
+    - TOUTES ses sessions status=scheduled sont SUPPRIMÉES (hard delete) —
       elles n'ont aucune valeur d'audit car elles n'ont jamais eu lieu.
-    - Les visites in_progress / completed / cancelled sont préservées (audit +
+    - Les sessions in_progress / completed / cancelled sont préservées (audit +
       facturation + room d'archives).
-    - Réversible via POST /patients/{id}/restore, mais les visites supprimées
+    - Réversible via POST /patients/{id}/restore, mais les sessions supprimées
       ne sont pas restaurées.
     """
     for p in MOCK_CLIENTS:
@@ -1039,20 +1039,20 @@ async def archive_patient(
                 entity_type="clients",
                 entity_id=client_id,
                 action="delete",
-                changes={"deleted_scheduled_visits": deleted},
+                changes={"deleted_scheduled_sessions": deleted},
                 request=request,
             )
             return {
                 "message": "Client archivé",
                 "client_id": client_id,
-                "deleted_scheduled_visits": deleted,
+                "deleted_scheduled_sessions": deleted,
             }
     raise HTTPException(status_code=404, detail="Client non trouvé")
 
 
 @app.post("/clients/{client_id}/restore")
 async def restore_patient(client_id: str, payload: dict = Depends(verify_token)):
-    """Restaure un patient archivé. Ne ressuscite PAS les visites annulées
+    """Restaure un patient archivé. Ne ressuscite PAS les sessions annulées
     automatiquement par l'archivage — le soignant doit les recréer si besoin."""
     for p in MOCK_CLIENTS:
         if p["id"] == client_id:
@@ -1068,24 +1068,24 @@ async def restore_patient(client_id: str, payload: dict = Depends(verify_token))
 async def list_visits(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    visit_status: Optional[str] = None,
+    session_status: Optional[str] = None,
     client_id: Optional[str] = None,
     payload: dict = Depends(verify_token)
 ):
-    """List visits for the current provider"""
+    """List sessions for the current provider"""
     results = MOCK_SESSIONS
-    if visit_status:
-        results = [v for v in results if v["status"] == visit_status]
+    if session_status:
+        results = [v for v in results if v["status"] == session_status]
     if client_id:
         results = [v for v in results if v["client_id"] == client_id]
     return [_enrich_visit(v) for v in results]
 
 @app.post("/sessions", status_code=status.HTTP_201_CREATED)
-async def create_visit(visit: dict, payload: dict = Depends(verify_token)):
-    """Create a new visit. Inherits lat/lng from the patient when not provided."""
+async def create_visit(session: dict, payload: dict = Depends(verify_token)):
+    """Create a new session. Inherits lat/lng from the patient when not provided."""
     now = datetime.now().isoformat()
     new_visit = {
-        **visit,
+        **session,
         "id": f"vis_{len(MOCK_SESSIONS) + 1:03d}",
         "nurse_id": payload.get("sub"),
         "created_at": now,
@@ -1104,25 +1104,25 @@ async def create_visit(visit: dict, payload: dict = Depends(verify_token)):
 
 @app.get("/sessions/{session_id}")
 async def get_visit(session_id: str, payload: dict = Depends(verify_token)):
-    """Get visit by ID"""
-    visit = next((v for v in MOCK_SESSIONS if v["id"] == session_id), None)
-    if not visit:
+    """Get session by ID"""
+    session = next((v for v in MOCK_SESSIONS if v["id"] == session_id), None)
+    if not session:
         raise HTTPException(status_code=404, detail="Session non trouvée")
-    return _enrich_visit(visit)
+    return _enrich_visit(session)
 
 @app.put("/sessions/{session_id}")
-async def update_visit(session_id: str, visit: dict, payload: dict = Depends(verify_token)):
-    """Update visit. Champ envoyé à null = non touché (PATCH-like)."""
-    visit = {k: v for k, v in visit.items() if v is not None}
+async def update_visit(session_id: str, session: dict, payload: dict = Depends(verify_token)):
+    """Update session. Champ envoyé à null = non touché (PATCH-like)."""
+    session = {k: v for k, v in session.items() if v is not None}
     for i, v in enumerate(MOCK_SESSIONS):
         if v["id"] == session_id:
-            MOCK_SESSIONS[i] = {**v, **visit, "updated_at": datetime.now().isoformat()}
+            MOCK_SESSIONS[i] = {**v, **session, "updated_at": datetime.now().isoformat()}
             return _enrich_visit(MOCK_SESSIONS[i])
     raise HTTPException(status_code=404, detail="Session non trouvée")
 
 @app.delete("/sessions/{session_id}")
 async def delete_visit(session_id: str, payload: dict = Depends(verify_token)):
-    """Annulation de visite (soft delete via status=cancelled).
+    """Annulation de session (soft delete via status=cancelled).
 
     On préserve la trace dans MOCK_SESSIONS pour l'audit et les rapports.
     Une session déjà terminée ne peut pas être annulée (409).
@@ -1145,7 +1145,7 @@ async def start_visit(
     request: Request,
     payload: dict = Depends(verify_token),
 ):
-    """Clock-in: marque le début effectif de la visite (statut + timestamp).
+    """Clock-in: marque le début effectif de la session (statut + timestamp).
 
     Idempotent : ne réécrit pas started_at si déjà défini.
     """
@@ -1177,7 +1177,7 @@ async def complete_visit(
     request: Request,
     payload: dict = Depends(verify_token),
 ):
-    """Clock-out: marque la fin de la visite (statut + timestamp)."""
+    """Clock-out: marque la fin de la session (statut + timestamp)."""
     now = datetime.now().isoformat()
     for v in MOCK_SESSIONS:
         if v["id"] == session_id:
@@ -1246,8 +1246,8 @@ async def create_consent(
         )
 
     nurse_id = payload.get("sub")
-    visit = next((v for v in MOCK_SESSIONS if v["id"] == body.session_id), None)
-    if not visit:
+    session = next((v for v in MOCK_SESSIONS if v["id"] == body.session_id), None)
+    if not session:
         raise HTTPException(status_code=404, detail="Session non trouvée")
 
     standing_order = next(
@@ -1268,7 +1268,7 @@ async def create_consent(
     if any(c["session_id"] == body.session_id for c in MOCK_CONSENTS):
         raise HTTPException(
             status_code=409,
-            detail="Un consentement existe déjà pour cette visite.",
+            detail="Un consentement existe déjà pour cette session.",
         )
 
     now = datetime.now().isoformat()
@@ -1277,7 +1277,7 @@ async def create_consent(
     consent = {
         "id": new_id,
         "session_id": body.session_id,
-        "client_id": visit["client_id"],
+        "client_id": session["client_id"],
         "nurse_id": nurse_id,
         "standing_order_id": standing_order["id"],
         "formulation_name": standing_order["formulation_name"],
@@ -1293,8 +1293,8 @@ async def create_consent(
         "created_at": now,
     }
     MOCK_CONSENTS.append(consent)
-    visit["consent_id"] = new_id
-    visit["updated_at"] = now
+    session["consent_id"] = new_id
+    session["updated_at"] = now
 
     _log_audit(
         nurse_id=nurse_id,
@@ -1304,7 +1304,7 @@ async def create_consent(
         changes={
             "session_id": body.session_id,
             "standing_order_id": standing_order["id"],
-            "client_id": visit["client_id"],
+            "client_id": session["client_id"],
         },
         request=request,
     )
@@ -1335,10 +1335,10 @@ def _consent_summary(c: dict) -> dict:
 
 @app.get("/sessions/{session_id}/consent")
 async def get_visit_consent(session_id: str, payload: dict = Depends(verify_token)):
-    """Récupère le consentement associé à une visite (ou 404)."""
+    """Récupère le consentement associé à une session (ou 404)."""
     consent = next((c for c in MOCK_CONSENTS if c["session_id"] == session_id), None)
     if not consent:
-        raise HTTPException(status_code=404, detail="Aucun consentement pour cette visite")
+        raise HTTPException(status_code=404, detail="Aucun consentement pour cette session")
     return _consent_summary(consent)
 
 
@@ -1847,11 +1847,11 @@ async def stripe_webhook(request: Request):
     return {"received": True}
 
 # Reporting Endpoints
-def _enrich_visit(visit: dict) -> dict:
-    """Attach client_name to a visit dict (denormalized join)"""
-    patient = next((p for p in MOCK_CLIENTS if p["id"] == visit.get("client_id")), None)
+def _enrich_visit(session: dict) -> dict:
+    """Attach client_name to a session dict (denormalized join)"""
+    patient = next((p for p in MOCK_CLIENTS if p["id"] == session.get("client_id")), None)
     name = f"{patient['first_name']} {patient['last_name']}" if patient else None
-    return {**visit, "client_name": name}
+    return {**session, "client_name": name}
 
 LOW_STOCK_THRESHOLD = 5  # par référence produit (somme tous lots)
 
@@ -1891,7 +1891,7 @@ async def get_dashboard(payload: dict = Depends(verify_token)):
         "low_stock_alerts": len(low_stock),
         "monthly_revenue": 4250.00,
         "today_revenue": today_revenue,
-        "visits_today": today_visits,
+        "sessions_today": today_visits,
         "low_stock_items": low_stock,
     }
 
@@ -1906,7 +1906,7 @@ async def get_revenue_report(
         "total_revenue": 50000.00,
         "total_visits": 500,
         "average_visit_value": 100.00,
-        "by_visit_type": {
+        "by_formulation_name": {
             "IV_Hydration": 30000.00,
             "Post_Op": 15000.00,
             "Primary_Care": 5000.00
@@ -1939,17 +1939,17 @@ class OptimizeVisitInput(BaseModel):
 # Route Optimization Endpoint
 @app.post("/optimize/routes")
 async def optimize_routes(
-    visits: List[OptimizeVisitInput],
+    sessions: List[OptimizeVisitInput],
     payload: dict = Depends(verify_token),
 ):
-    """Optimize visit routes via Mapbox Optimization v1 + return road geometry.
+    """Optimize session routes via Mapbox Optimization v1 + return road geometry.
 
     Falls back to input order with a straight-line geometry when:
       - MAPBOX_ACCESS_TOKEN is missing
-      - fewer than 2 visits have coordinates
+      - fewer than 2 sessions have coordinates
       - Mapbox API returns an error
     """
-    if not visits:
+    if not sessions:
         return {
             "optimized_route": [],
             "route_geometry": [],
@@ -1957,9 +1957,9 @@ async def optimize_routes(
             "total_duration_s": 0,
         }
 
-    # Resolve coords: prefer visit's own lat/lng, fall back to patient's.
+    # Resolve coords: prefer session's own lat/lng, fall back to patient's.
     resolved: List[Tuple[Session, Optional[Tuple[float, float]]]] = []
-    for v in visits:
+    for v in sessions:
         coords: Optional[Tuple[float, float]] = None
         if v.latitude is not None and v.longitude is not None:
             coords = (v.longitude, v.latitude)
@@ -1971,10 +1971,10 @@ async def optimize_routes(
                 coords = (patient["longitude"], patient["latitude"])
         resolved.append((v, coords))
 
-    visits_with_coords = [(v, c) for v, c in resolved if c is not None]
+    sessions_with_coords = [(v, c) for v, c in resolved if c is not None]
 
     # Pas assez de coords → on renvoie l'ordre d'entrée tel quel.
-    if len(visits_with_coords) < 2:
+    if len(sessions_with_coords) < 2:
         return {
             "optimized_route": [
                 {"session_id": v.id, "order": i}
@@ -1986,7 +1986,7 @@ async def optimize_routes(
             "warning": "Coordonnées insuffisantes — ordre d'entrée conservé",
         }
 
-    coords_list = [c for _, c in visits_with_coords]
+    coords_list = [c for _, c in sessions_with_coords]
     result = await optimize_route_mapbox(coords_list)
 
     if result is None:
@@ -1994,7 +1994,7 @@ async def optimize_routes(
         return {
             "optimized_route": [
                 {"session_id": v.id, "order": i}
-                for i, (v, _) in enumerate(visits_with_coords)
+                for i, (v, _) in enumerate(sessions_with_coords)
             ],
             "route_geometry": [list(c) for c in coords_list],
             "total_distance_m": 0,
@@ -2004,7 +2004,7 @@ async def optimize_routes(
 
     return {
         "optimized_route": [
-            {"session_id": visits_with_coords[idx][0].id, "order": position}
+            {"session_id": sessions_with_coords[idx][0].id, "order": position}
             for position, idx in enumerate(result["order"])
         ],
         "route_geometry": result["geometry"],

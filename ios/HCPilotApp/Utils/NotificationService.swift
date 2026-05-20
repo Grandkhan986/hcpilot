@@ -111,14 +111,14 @@ final class NotificationService {
         }
     }
 
-    // MARK: - Visit reminders
+    // MARK: - Session reminders
 
-    /// J-1 et H-2 avant chaque visite scheduled future.
-    func scheduleVisitReminders(visits: [Visit]) async {
-        await removeScheduled(withPrefix: "visit:")
+    /// J-1 et H-2 avant chaque session scheduled future.
+    func scheduleSessionReminders(sessions: [Session]) async {
+        await removeScheduled(withPrefix: "session:")
         let now = Date()
-        for visit in visits where visit.status == .scheduled {
-            let target = visit.scheduled_at
+        for session in sessions where session.status == .scheduled {
+            let target = session.scheduled_at
             guard target > now else { continue }
 
             // J-1 (à 8h le jour J-1)
@@ -126,9 +126,9 @@ final class NotificationService {
                 let dateAt8 = setHour(dayMinusOne, hour: 8)
                 if dateAt8 > now {
                     await scheduleAt(
-                        id: "visit:\(visit.id):J-1",
+                        id: "session:\(session.id):J-1",
                         title: "RDV demain",
-                        body: "\(visit.client_name ?? "Client") à \(formatTime(target))",
+                        body: "\(session.client_name ?? "Client") à \(formatTime(target))",
                         fireDate: dateAt8
                     )
                 }
@@ -138,9 +138,9 @@ final class NotificationService {
             if let twoHoursBefore = calendar.date(byAdding: .hour, value: -2, to: target),
                twoHoursBefore > now {
                 await scheduleAt(
-                    id: "visit:\(visit.id):H-2",
+                    id: "session:\(session.id):H-2",
                     title: "RDV dans 2 heures",
-                    body: "\(visit.client_name ?? "Client") à \(formatTime(target))",
+                    body: "\(session.client_name ?? "Client") à \(formatTime(target))",
                     fireDate: twoHoursBefore
                 )
             }

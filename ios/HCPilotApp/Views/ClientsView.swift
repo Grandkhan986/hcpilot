@@ -1,7 +1,7 @@
 import SwiftUI
 
-struct PatientsView: View {
-    @StateObject private var viewModel = PatientsViewModel()
+struct ClientsView: View {
+    @StateObject private var viewModel = ClientsViewModel()
     @State private var showCreateForm = false
 
     var body: some View {
@@ -24,7 +24,7 @@ struct PatientsView: View {
                     Spacer()
                     ProgressView()
                     Spacer()
-                } else if viewModel.filteredPatients.isEmpty {
+                } else if viewModel.filteredClients.isEmpty {
                     Spacer()
                     VStack(spacing: 12) {
                         Image(systemName: viewModel.showArchived ? "archivebox" : "person.3")
@@ -36,24 +36,24 @@ struct PatientsView: View {
                     Spacer()
                 } else {
                     List {
-                        ForEach(viewModel.filteredPatients) { patient in
-                            NavigationLink(destination: PatientDetailView(
-                                patient: patient,
+                        ForEach(viewModel.filteredClients) { client in
+                            NavigationLink(destination: ClientDetailView(
+                                client: client,
                                 onChanged: { viewModel.refresh() }
                             )) {
-                                PatientListItem(patient: patient)
+                                ClientListItem(client: client)
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                if patient.isArchived {
+                                if client.isArchived {
                                     Button {
-                                        Task { await viewModel.restore(patient) }
+                                        Task { await viewModel.restore(client) }
                                     } label: {
                                         Label("Restaurer", systemImage: "tray.and.arrow.up")
                                     }
                                     .tint(.green)
                                 } else {
                                     Button(role: .destructive) {
-                                        Task { await viewModel.archive(patient) }
+                                        Task { await viewModel.archive(client) }
                                     } label: {
                                         Label("Archiver", systemImage: "archivebox")
                                     }
@@ -84,33 +84,33 @@ struct PatientsView: View {
                 }
             }
             .sheet(isPresented: $showCreateForm) {
-                PatientFormView(mode: .create) { viewModel.refresh() }
+                ClientFormView(mode: .create) { viewModel.refresh() }
             }
             .onAppear { viewModel.load() }
         }
     }
 }
 
-struct PatientListItem: View {
-    let patient: Patient
+struct ClientListItem: View {
+    let client: Client
 
     var body: some View {
         HStack(spacing: 12) {
             Circle()
-                .fill(patient.isArchived ? Color.gray : Color.blue)
+                .fill(client.isArchived ? Color.gray : Color.blue)
                 .frame(width: 44, height: 44)
                 .overlay(
-                    Text(patient.initials)
+                    Text(client.initials)
                         .foregroundColor(.white)
                         .font(.caption)
                         .fontWeight(.bold)
                 )
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(patient.full_name)
+                Text(client.full_name)
                     .font(.headline)
-                    .foregroundStyle(patient.isArchived ? .secondary : .primary)
-                if let phone = patient.phone {
+                    .foregroundStyle(client.isArchived ? .secondary : .primary)
+                if let phone = client.phone {
                     Text(phone)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -119,14 +119,14 @@ struct PatientListItem: View {
 
             Spacer()
 
-            if patient.isArchived {
+            if client.isArchived {
                 Text("Archivé")
                     .font(.caption2)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Color.gray.opacity(0.2))
                     .cornerRadius(4)
-            } else if let gender = patient.gender {
+            } else if let gender = client.gender {
                 Text(gender == "M" ? "Homme" : "Femme")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -136,8 +136,8 @@ struct PatientListItem: View {
     }
 }
 
-struct PatientDetailView: View {
-    let patient: Patient
+struct ClientDetailView: View {
+    let client: Client
     var onChanged: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -151,17 +151,17 @@ struct PatientDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 header
 
-                if patient.isArchived {
+                if client.isArchived {
                     archiveBanner
                 }
 
                 contactCard
 
-                if let history = patient.medical_history, !history.isEmpty {
+                if let history = client.medical_history, !history.isEmpty {
                     medicalCard(history: history)
                 }
 
-                if let allergies = patient.allergies, !allergies.isEmpty {
+                if let allergies = client.allergies, !allergies.isEmpty {
                     allergiesCard(allergies: allergies)
                 }
 
@@ -179,7 +179,7 @@ struct PatientDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
-                    if !patient.isArchived {
+                    if !client.isArchived {
                         Button { showEditForm = true } label: {
                             Label("Modifier", systemImage: "pencil")
                         }
@@ -199,7 +199,7 @@ struct PatientDetailView: View {
             }
         }
         .sheet(isPresented: $showEditForm) {
-            PatientFormView(mode: .edit(patient)) {
+            ClientFormView(mode: .edit(client)) {
                 onChanged()
                 actionInfo = "Modifications enregistrées."
             }
@@ -208,26 +208,26 @@ struct PatientDetailView: View {
             Button("Annuler", role: .cancel) { }
             Button("Archiver", role: .destructive) { Task { await archive() } }
         } message: {
-            Text("Le patient sera déplacé vers les archives. Toutes ses visites planifiées seront supprimées définitivement. Les visites terminées ou en cours sont conservées dans la fiche d'archive.")
+            Text("Le client sera déplacé vers les archives. Toutes ses sessions planifiées seront supprimées définitivement. Les sessions terminées ou en cours sont conservées dans la fiche d'archive.")
         }
     }
 
     private var header: some View {
         HStack {
             Circle()
-                .fill(patient.isArchived ? Color.gray : Color.blue)
+                .fill(client.isArchived ? Color.gray : Color.blue)
                 .frame(width: 64, height: 64)
                 .overlay(
-                    Text(patient.initials)
+                    Text(client.initials)
                         .foregroundColor(.white)
                         .font(.title3)
                         .fontWeight(.bold)
                 )
             VStack(alignment: .leading, spacing: 4) {
-                Text(patient.full_name)
+                Text(client.full_name)
                     .font(.title2)
                     .fontWeight(.bold)
-                if let gender = patient.gender, let dob = patient.date_of_birth {
+                if let gender = client.gender, let dob = client.date_of_birth {
                     Text("\(gender == "M" ? "Homme" : "Femme") · \(dob)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
@@ -242,7 +242,7 @@ struct PatientDetailView: View {
             Image(systemName: "archivebox.fill")
             Text("Client archivé")
                 .fontWeight(.semibold)
-            if let date = patient.archived_at {
+            if let date = client.archived_at {
                 Text("le \(String(date.prefix(10)))")
             }
             Spacer()
@@ -255,13 +255,13 @@ struct PatientDetailView: View {
 
     private var contactCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let phone = patient.phone {
+            if let phone = client.phone {
                 InfoRow(icon: "phone", label: "Téléphone", value: phone)
             }
-            if let email = patient.email {
+            if let email = client.email {
                 InfoRow(icon: "envelope", label: "Email", value: email)
             }
-            if let address = patient.address {
+            if let address = client.address {
                 InfoRow(icon: "location", label: "Adresse", value: address)
             }
         }
@@ -295,11 +295,11 @@ struct PatientDetailView: View {
 
     private func archive() async {
         do {
-            let r = try await APIService.shared.archivePatient(id: patient.id)
+            let r = try await APIService.shared.archiveClient(id: client.id)
             onChanged()
-            if r.deleted_scheduled_visits > 0 {
-                let s = r.deleted_scheduled_visits > 1 ? "s" : ""
-                actionInfo = "\(r.deleted_scheduled_visits) visite\(s) planifiée\(s) supprimée\(s)."
+            if r.deleted_scheduled_sessions > 0 {
+                let s = r.deleted_scheduled_sessions > 1 ? "s" : ""
+                actionInfo = "\(r.deleted_scheduled_sessions) session\(s) planifiée\(s) supprimée\(s)."
                 try? await Task.sleep(nanoseconds: 900_000_000)
             }
             dismiss()
@@ -310,7 +310,7 @@ struct PatientDetailView: View {
 
     private func restore() async {
         do {
-            try await APIService.shared.restorePatient(id: patient.id)
+            try await APIService.shared.restoreClient(id: client.id)
             onChanged()
             dismiss()
         } catch {
@@ -338,8 +338,8 @@ struct InfoRow: View {
 }
 
 @MainActor
-class PatientsViewModel: ObservableObject {
-    @Published var patients: [Patient] = []
+class ClientsViewModel: ObservableObject {
+    @Published var clients: [Client] = []
     @Published var searchTerm = ""
     @Published var isLoading = false
     @Published var showArchived = false
@@ -347,36 +347,36 @@ class PatientsViewModel: ObservableObject {
 
     private let apiService = APIService.shared
 
-    var filteredPatients: [Patient] {
-        guard !searchTerm.isEmpty else { return patients }
-        return patients.filter {
+    var filteredClients: [Client] {
+        guard !searchTerm.isEmpty else { return clients }
+        return clients.filter {
             $0.full_name.lowercased().contains(searchTerm.lowercased()) ||
             ($0.phone?.contains(searchTerm) ?? false)
         }
     }
 
-    func load() { Task { await fetchPatients() } }
-    func refresh() { Task { await fetchPatients() } }
+    func load() { Task { await fetchClients() } }
+    func refresh() { Task { await fetchClients() } }
 
-    private func fetchPatients() async {
+    private func fetchClients() async {
         isLoading = true
         do {
-            patients = try await apiService.getPatients(archived: showArchived)
+            clients = try await apiService.getClients(archived: showArchived)
         } catch {
-            patients = []
+            clients = []
         }
         isLoading = false
     }
 
-    func archive(_ patient: Patient) async {
+    func archive(_ client: Client) async {
         do {
-            let r = try await apiService.archivePatient(id: patient.id)
-            if r.deleted_scheduled_visits > 0 {
-                lastActionInfo = "Client archivé, \(r.deleted_scheduled_visits) visite(s) planifiée(s) supprimée(s)."
+            let r = try await apiService.archiveClient(id: client.id)
+            if r.deleted_scheduled_sessions > 0 {
+                lastActionInfo = "Client archivé, \(r.deleted_scheduled_sessions) session(s) planifiée(s) supprimée(s)."
             } else {
                 lastActionInfo = "Client archivé."
             }
-            await fetchPatients()
+            await fetchClients()
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             lastActionInfo = nil
         } catch {
@@ -384,11 +384,11 @@ class PatientsViewModel: ObservableObject {
         }
     }
 
-    func restore(_ patient: Patient) async {
+    func restore(_ client: Client) async {
         do {
-            try await apiService.restorePatient(id: patient.id)
-            lastActionInfo = "Patient restauré."
-            await fetchPatients()
+            try await apiService.restoreClient(id: client.id)
+            lastActionInfo = "Client restauré."
+            await fetchClients()
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             lastActionInfo = nil
         } catch {
@@ -398,5 +398,5 @@ class PatientsViewModel: ObservableObject {
 }
 
 #Preview {
-    PatientsView()
+    ClientsView()
 }

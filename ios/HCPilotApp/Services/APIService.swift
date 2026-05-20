@@ -339,24 +339,24 @@ class APIService {
         return response
     }
 
-    // MARK: - Visits
+    // MARK: - Sessions
 
-    func getVisits() async throws -> [Visit] {
+    func getSessions() async throws -> [Session] {
         return try await cachedGet("/sessions")
     }
 
-    func createVisit(visit: Visit) async throws -> Visit {
-        return try await post("/sessions", body: visit)
+    func createSession(session: Session) async throws -> Session {
+        return try await post("/sessions", body: session)
     }
 
-    func updateVisit(visit: Visit) async throws -> Visit {
-        return try await put("/sessions/\(visit.id)", body: visit)
+    func updateSession(session: Session) async throws -> Session {
+        return try await put("/sessions/\(session.id)", body: session)
     }
 
-    /// Patch partiel d'une visite (PATCH-like).
-    struct VisitPatch: Encodable {
-        var visit_type: String?
-        var visit_date: Date?
+    /// Patch partiel d'une session (PATCH-like).
+    struct SessionPatch: Encodable {
+        var formulation_name: String?
+        var scheduled_at: Date?
         var address: String?
         var latitude: Double?
         var longitude: Double?
@@ -365,41 +365,41 @@ class APIService {
         var total_amount: Double?
     }
 
-    func updateVisit(id: String, patch: VisitPatch) async throws -> Visit {
+    func updateSession(id: String, patch: SessionPatch) async throws -> Session {
         return try await put("/sessions/\(id)", body: patch)
     }
 
-    /// Soft-delete: marque la visite comme annulée (status=cancelled).
+    /// Soft-delete: marque la session comme annulée (status=cancelled).
     /// Offline-safe : mise en queue si le réseau tombe.
-    func deleteVisit(id: String) async throws {
+    func deleteSession(id: String) async throws {
         try await queuedDelete("/sessions/\(id)")
     }
 
     /// Clock-in. Offline-safe : si le réseau tombe, la mutation est mise en queue
     /// et rejouée au retour de connectivité.
-    func startVisit(visitId: String) async throws -> [String: Any] {
-        return try await queuedPostAction("/sessions/\(visitId)/start")
+    func startSession(sessionId: String) async throws -> [String: Any] {
+        return try await queuedPostAction("/sessions/\(sessionId)/start")
     }
 
-    /// Clock-out. Offline-safe (idem startVisit).
-    func completeVisit(visitId: String) async throws -> [String: Any] {
-        return try await queuedPostAction("/sessions/\(visitId)/complete")
+    /// Clock-out. Offline-safe (idem startSession).
+    func completeSession(sessionId: String) async throws -> [String: Any] {
+        return try await queuedPostAction("/sessions/\(sessionId)/complete")
     }
 
-    // MARK: - Patients
+    // MARK: - Clients
 
-    func getPatients(archived: Bool = false) async throws -> [Patient] {
+    func getClients(archived: Bool = false) async throws -> [Client] {
         return try await cachedGet("/clients?archived=\(archived)")
     }
 
-    func createPatient(patient: Patient) async throws -> Patient {
-        return try await post("/clients", body: patient)
+    func createClient(client: Client) async throws -> Client {
+        return try await post("/clients", body: client)
     }
 
-    /// Patch envoyé sur PUT /patients/{id}. Tous champs Optional :
+    /// Patch envoyé sur PUT /clients/{id}. Tous champs Optional :
     /// - nil  → champ non touché côté backend (filtré)
     /// - ""   → champ vidé
-    struct PatientPatch: Encodable {
+    struct ClientPatch: Encodable {
         var first_name: String?
         var last_name: String?
         var email: String?
@@ -411,9 +411,9 @@ class APIService {
         var allergies: String?
     }
 
-    /// Réponse de PUT /patients/{id} : patient mis à jour + nb visites futures
+    /// Réponse de PUT /clients/{id} : client mis à jour + nb sessions futures
     /// resync'ées suite à un changement d'adresse.
-    struct UpdatedPatientResponse: Decodable {
+    struct UpdatedClientResponse: Decodable {
         let id: String
         let first_name: String
         let last_name: String
@@ -421,26 +421,26 @@ class APIService {
         let latitude: Double?
         let longitude: Double?
         let archived_at: String?
-        let synced_future_visits: Int?
+        let synced_future_sessions: Int?
     }
 
-    func updatePatient(id: String, patch: PatientPatch) async throws -> UpdatedPatientResponse {
+    func updateClient(id: String, patch: ClientPatch) async throws -> UpdatedClientResponse {
         return try await put("/clients/\(id)", body: patch)
     }
 
-    /// Soft-delete : archive le patient.
-    /// Renvoie le nombre de visites planifiées supprimées.
-    struct ArchivePatientResponse: Decodable {
+    /// Soft-delete : archive le client.
+    /// Renvoie le nombre de sessions planifiées supprimées.
+    struct ArchiveClientResponse: Decodable {
         let message: String
         let client_id: String
-        let deleted_scheduled_visits: Int
+        let deleted_scheduled_sessions: Int
     }
 
-    func archivePatient(id: String) async throws -> ArchivePatientResponse {
+    func archiveClient(id: String) async throws -> ArchiveClientResponse {
         return try await deleteReturning("/clients/\(id)")
     }
 
-    func restorePatient(id: String) async throws {
+    func restoreClient(id: String) async throws {
         _ = try await postAction("/clients/\(id)/restore")
     }
 
@@ -494,7 +494,7 @@ class APIService {
         let pending_invoices: Int
         let low_stock_alerts: Int
         let monthly_revenue: Double
-        let visits_today: [Visit]
+        let sessions_today: [Session]
         let low_stock_items: [LowStockProduct]
     }
 
@@ -595,8 +595,8 @@ class APIService {
         return try await post("/consents", body: payload)
     }
 
-    func getConsent(forVisit visitId: String) async throws -> ConsentSummary {
-        return try await get("/sessions/\(visitId)/consent")
+    func getConsent(forSession sessionId: String) async throws -> ConsentSummary {
+        return try await get("/sessions/\(sessionId)/consent")
     }
 
     /// Renvoie le PDF base64 du consentement.
@@ -628,8 +628,8 @@ class APIService {
         let warning: String?
     }
 
-    func optimizeRoute(visits: [Visit]) async throws -> OptimizedRouteResponse {
-        return try await post("/optimize/routes", body: visits)
+    func optimizeRoute(sessions: [Session]) async throws -> OptimizedRouteResponse {
+        return try await post("/optimize/routes", body: sessions)
     }
 }
 

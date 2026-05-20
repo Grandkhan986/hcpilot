@@ -27,8 +27,8 @@ struct ReportsView: View {
                         GridItem(.flexible())
                     ], spacing: 16) {
                         MetricCard(title: "Revenu total", value: viewModel.totalRevenue, color: .green)
-                        MetricCard(title: "Total visites", value: "\(viewModel.totalVisits)", color: .blue)
-                        MetricCard(title: "Panier moyen", value: viewModel.avgVisitValue, color: .purple)
+                        MetricCard(title: "Total sessions", value: "\(viewModel.totalSessions)", color: .blue)
+                        MetricCard(title: "Panier moyen", value: viewModel.avgSessionValue, color: .purple)
                     }
                     .padding(.horizontal)
 
@@ -105,8 +105,8 @@ struct RevenueBar: View {
 class ReportsViewModel: ObservableObject {
     @Published var period = "this_month"
     @Published var totalRevenue = "0 €"
-    @Published var totalVisits = 0
-    @Published var avgVisitValue = "0 €"
+    @Published var totalSessions = 0
+    @Published var avgSessionValue = "0 €"
     @Published var revenueByType: [(key: String, value: Double)] = []
     @Published var maxRevenue: Double = 1
 
@@ -120,8 +120,8 @@ class ReportsViewModel: ObservableObject {
         do {
             let report = try await apiService.getRevenueReport(startDate: "2024-01-01", endDate: "2024-12-31")
             totalRevenue = String(format: "%.0f €", report.total_revenue)
-            totalVisits = report.total_visits
-            avgVisitValue = String(format: "%.0f €", report.average_visit_value)
+            totalSessions = report.total_visits
+            avgSessionValue = String(format: "%.0f €", report.average_visit_value)
 
             revenueByType = report.by_visit_type.map { (key: $0.key.replacingOccurrences(of: "_", with: " "), value: $0.value) }
                 .sorted { $0.value > $1.value }
@@ -134,8 +134,8 @@ class ReportsViewModel: ObservableObject {
 
     private func loadMockData() {
         totalRevenue = "28 500 €"
-        totalVisits = 180
-        avgVisitValue = "158 €"
+        totalSessions = 180
+        avgSessionValue = "158 €"
         revenueByType = [
             ("Perfusion IV", 18000),
             ("Post-Op", 7000),

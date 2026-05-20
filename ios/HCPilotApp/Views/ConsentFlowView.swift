@@ -8,22 +8,22 @@ import UIKit
 /// 3. Checkpoints (acquittements obligatoires)
 /// 4. Signature électronique + soumission
 struct ConsentFlowView: View {
-    let visit: Visit
-    let patientName: String
+    let session: Session
+    let clientName: String
     let nurseName: String
     var onCompleted: () -> Void
 
     @StateObject private var vm: ConsentFlowViewModel
     @Environment(\.dismiss) private var dismiss
 
-    init(visit: Visit, patientName: String, nurseName: String, onCompleted: @escaping () -> Void) {
-        self.visit = visit
-        self.patientName = patientName
+    init(session: Session, clientName: String, nurseName: String, onCompleted: @escaping () -> Void) {
+        self.session = session
+        self.clientName = clientName
         self.nurseName = nurseName
         self.onCompleted = onCompleted
         _vm = StateObject(wrappedValue: ConsentFlowViewModel(
-            visit: visit,
-            patientName: patientName,
+            session: session,
+            clientName: clientName,
             nurseName: nurseName
         ))
     }
@@ -64,7 +64,7 @@ struct ConsentFlowView: View {
                     dismiss()
                 }
             } message: {
-                Text("Le document signé est disponible dans la fiche de la visite.")
+                Text("Le document signé est disponible dans la fiche de la session.")
             }
         }
     }
@@ -233,10 +233,10 @@ private struct SignatureStep: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Signature du patient")
+            Text("Signature du client")
                 .font(.headline)
                 .padding(.horizontal)
-            Text("Le patient signe ci-dessous avec son doigt.")
+            Text("Le client signe ci-dessous avec son doigt.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
@@ -333,8 +333,8 @@ final class ConsentFlowViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var justSubmitted = false
 
-    let visit: Visit
-    let patientName: String
+    let session: Session
+    let clientName: String
     let nurseName: String
 
     private let api = APIService.shared
@@ -344,9 +344,9 @@ final class ConsentFlowViewModel: ObservableObject {
         !checkpoints.isEmpty && checkpoints.allSatisfy { $0.accepted }
     }
 
-    init(visit: Visit, patientName: String, nurseName: String) {
-        self.visit = visit
-        self.patientName = patientName
+    init(session: Session, clientName: String, nurseName: String) {
+        self.session = session
+        self.clientName = clientName
         self.nurseName = nurseName
     }
 
@@ -404,7 +404,7 @@ final class ConsentFlowViewModel: ObservableObject {
         let pdfInput = ConsentPDFBuilder.Input(
             documentId: UUID().uuidString,
             nurseName: nurseName,
-            patientName: patientName,
+            clientName: clientName,
             formulationName: standingOrder.formulation_name,
             consentText: consentText,
             checkpoints: checkpoints,
@@ -418,7 +418,7 @@ final class ConsentFlowViewModel: ObservableObject {
         let pdfB64 = pdfData.base64EncodedString()
 
         let body = CreateConsentRequest(
-            session_id: visit.id,
+            session_id: session.id,
             standing_order_id: standingOrder.id,
             checkpoints: checkpoints,
             signature_image_b64: signatureB64,

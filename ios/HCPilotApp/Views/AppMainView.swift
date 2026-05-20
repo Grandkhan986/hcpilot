@@ -19,8 +19,8 @@ struct AppMainView: View {
             Group {
                 switch selectedTab {
                 case 0: HomeView()
-                case 1: VisitsListView()
-                case 2: PatientsView()
+                case 1: SessionsListView()
+                case 2: ClientsView()
                 case 3: NavigationStack { ComplianceDashboardView() }
                 case 4: InventoryListView()
                 case 5: InvoicesView()

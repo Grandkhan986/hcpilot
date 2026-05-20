@@ -7,7 +7,7 @@ struct RouteMapStop: Identifiable, Equatable {
     let coordinate: CLLocationCoordinate2D
     let title: String       // client_name ou type
     let address: String
-    let status: Visit.VisitStatus
+    let status: Session.SessionStatus
     let startedAt: Date?
     let completedAt: Date?
 
@@ -117,8 +117,8 @@ struct RouteMapView: View {
                 onNavigate: { openInMaps(stop: next) }
             )
         } else if !viewModel.stops.isEmpty {
-            // Toutes les visites sont terminées/annulées.
-            BannerView(text: "Toutes les visites du jour sont terminées.", kind: .success)
+            // Toutes les sessions sont terminées/annulées.
+            BannerView(text: "Toutes les sessions du jour sont terminées.", kind: .success)
         } else if let error = viewModel.errorMessage {
             VStack(spacing: 8) {
                 BannerView(text: error, kind: .error)
@@ -129,7 +129,7 @@ struct RouteMapView: View {
             }
         } else {
             BannerView(
-                text: "Aucune visite géolocalisée aujourd'hui.",
+                text: "Aucune session géolocalisée aujourd'hui.",
                 kind: .info
             )
         }
@@ -297,7 +297,7 @@ private struct StopDetailSheet: View {
                 }
 
                 switch stop.status {
-                case .scheduled:
+                case .scheduled, .en_route:
                     Button { onStart(stop) } label: {
                         actionLabel("play.circle.fill", "Commencer la session", color: .green)
                     }
@@ -305,7 +305,7 @@ private struct StopDetailSheet: View {
                     Button { onComplete(stop) } label: {
                         actionLabel("checkmark.circle.fill", "Terminer la session", color: .green)
                     }
-                case .completed, .cancelled:
+                case .completed, .cancelled, .no_show:
                     EmptyView()
                 }
             }
@@ -467,14 +467,14 @@ final class RouteMapViewModel: ObservableObject {
     private let api = APIService.shared
     private let calendar = Calendar.current
 
-    /// Première visite non terminée dans l'ordre optimisé.
+    /// Première session non terminée dans l'ordre optimisé.
     var nextStop: RouteMapStop? {
         stops.first(where: { $0.status == .scheduled || $0.status == .in_progress })
     }
 
     func start(stopId: String) async {
         do {
-            _ = try await api.startVisit(visitId: stopId)
+            _ = try await api.startSession(sessionId: stopId)
             await reload()
         } catch {
             errorMessage = "Erreur démarrage : \(error.localizedDescription)"
@@ -483,7 +483,7 @@ final class RouteMapViewModel: ObservableObject {
 
     func complete(stopId: String) async {
         do {
-            _ = try await api.completeVisit(visitId: stopId)
+            _ = try await api.completeSession(sessionId: stopId)
             await reload()
         } catch {
             errorMessage = "Erreur clôture : \(error.localizedDescription)"
@@ -497,19 +497,19 @@ final class RouteMapViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            async let visitsTask = api.getVisits()
-            async let patientsTask = api.getPatients()
-            let visits = try await visitsTask
-            let patients = try await patientsTask
+            async let sessionsTask = api.getSessions()
+            async let clientsTask = api.getClients()
+            let sessions = try await sessionsTask
+            let clients = try await clientsTask
 
-            let todays = visits.filter {
+            let todays = sessions.filter {
                 calendar.isDateInToday($0.scheduled_at) && $0.status != .cancelled
             }
-            let withCoords = todays.compactMap { v -> (Visit, CLLocationCoordinate2D)? in
+            let withCoords = todays.compactMap { v -> (Session, CLLocationCoordinate2D)? in
                 if let lat = v.latitude, let lng = v.longitude {
                     return (v, CLLocationCoordinate2D(latitude: lat, longitude: lng))
                 }
-                if let p = patients.first(where: { $0.id == v.client_id }),
+                if let p = clients.first(where: { $0.id == v.client_id }),
                    let lat = p.latitude, let lng = p.longitude {
                     return (v, CLLocationCoordinate2D(latitude: lat, longitude: lng))
                 }
@@ -525,8 +525,8 @@ final class RouteMapViewModel: ObservableObject {
                 return
             }
 
-            let visitsForOptim = withCoords.map { $0.0 }
-            let response = try await api.optimizeRoute(visits: visitsForOptim)
+            let sessionsForOptim = withCoords.map { $0.0 }
+            let response = try await api.optimizeRoute(sessions: sessionsForOptim)
             // On masque le warning "ordre conservé" quand il n'y a qu'un seul stop —
             // il n'y a juste rien à optimiser.
             warning = (withCoords.count == 1) ? nil : response.warning
@@ -537,7 +537,7 @@ final class RouteMapViewModel: ObservableObject {
 
             let built: [RouteMapStop] = withCoords.map { v, coord in
                 let order = orderById[v.id] ?? Int.max
-                let label = v.client_name ?? v.service_type.replacingOccurrences(of: "_", with: " ")
+                let label = v.client_name ?? v.formulation_name.replacingOccurrences(of: "_", with: " ")
                 return RouteMapStop(
                     id: v.id,
                     order: order,
