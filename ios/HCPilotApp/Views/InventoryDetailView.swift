@@ -70,11 +70,11 @@ private struct LotRow: View {
             HStack {
                 Text("Lot \(lot.lot_number)").font(.subheadline).fontWeight(.semibold)
                 Spacer()
-                StatusChip(status: lot.expiration_status ?? "unknown")
+                StatusChip(status: lot.expiration_status ?? .unknown)
             }
             HStack(spacing: 14) {
                 Label("\(lot.quantity_remaining)/\(lot.quantity_initial)", systemImage: "cube")
-                Label("Exp. \(lot.expiration_date)", systemImage: "calendar")
+                Label("Exp. \(lot.expiration_date, style: .date)", systemImage: "calendar")
                 if let d = lot.days_to_expiry {
                     Text(d < 0 ? "Expiré" : "J-\(d)")
                         .foregroundStyle(d < 30 ? .red : .secondary)
@@ -102,7 +102,7 @@ private struct LotRow: View {
 }
 
 private struct StatusChip: View {
-    let status: String
+    let status: ComplianceStatus
     var body: some View {
         Text(label).font(.caption2).fontWeight(.semibold)
             .padding(.horizontal, 6).padding(.vertical, 2)
@@ -112,19 +112,19 @@ private struct StatusChip: View {
     }
     private var label: String {
         switch status {
-        case "ok": return "OK"
-        case "warning": return "Bientôt"
-        case "critical": return "<15j"
-        case "expired": return "Expiré"
-        default: return "—"
+        case .ok: return "OK"
+        case .warning: return "Bientôt"
+        case .critical: return "<15j"
+        case .expired: return "Expiré"
+        case .unknown: return "—"
         }
     }
     private var color: Color {
         switch status {
-        case "ok": return .green
-        case "warning": return .orange
-        case "critical", "expired": return .red
-        default: return .gray
+        case .ok: return .green
+        case .warning: return .orange
+        case .critical, .expired: return .red
+        case .unknown: return .gray
         }
     }
 }

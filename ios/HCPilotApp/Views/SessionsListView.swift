@@ -326,7 +326,7 @@ struct SessionDetailView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Signé · \(consent.formulation_name)")
                             .font(.subheadline).fontWeight(.semibold)
-                        Text("Signé le \(String(consent.signed_at.prefix(19).replacingOccurrences(of: "T", with: " ")))")
+                        Text("Signé \(consent.signed_at, formatter: Self.consentDateFmt)")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         if let lat = consent.signed_latitude, let lng = consent.signed_longitude {
@@ -441,6 +441,14 @@ struct SessionDetailView: View {
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .medium
+        f.timeStyle = .short
+        f.locale = Locale(identifier: "fr_FR")
+        return f
+    }()
+
+    fileprivate static let consentDateFmt: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .short
         f.timeStyle = .short
         f.locale = Locale(identifier: "fr_FR")
         return f

@@ -12,17 +12,20 @@ struct Invoice: Identifiable, Hashable, Codable {
     let discount: Double?
     let total: Double
     let items: [InvoiceItem]?
-    let due_date: String
-    let paid_at: String?
+    let due_date: Date
+    let paid_at: Date?
     let stripe_payment_intent_id: String?
-    let created_at: String
-    let updated_at: String?
+    let created_at: Date
+    let updated_at: Date?
 
     enum InvoiceStatus: String, CaseIterable, Codable {
         case draft = "draft"
         case sent = "sent"
         case paid = "paid"
         case overdue = "overdue"
+        case refunded = "refunded"
+        case partial_refund = "partial_refund"
+        case cancelled = "cancelled"
     }
 
     static func == (lhs: Invoice, rhs: Invoice) -> Bool {

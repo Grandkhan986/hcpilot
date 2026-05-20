@@ -157,7 +157,7 @@ struct ClientFormView: View {
         do {
             switch mode {
             case .create:
-                let now = ISO8601DateFormatter().string(from: Date())
+                let now = Date()
                 let newClient = Client(
                     id: UUID().uuidString,
                     nurse_id: "",  // serveur remplit depuis le JWT

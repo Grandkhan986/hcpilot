@@ -29,9 +29,9 @@ struct Client: Identifiable, Hashable, Codable {
     let emergency_contact_name: String?
     let emergency_contact_phone: String?
     let id_document_path: String?  // photo ID stockée (Supabase Storage en prod)
-    let archived_at: String?
-    let created_at: String
-    let updated_at: String?
+    let archived_at: Date?
+    let created_at: Date
+    let updated_at: Date?
 
     var isArchived: Bool { archived_at != nil }
 

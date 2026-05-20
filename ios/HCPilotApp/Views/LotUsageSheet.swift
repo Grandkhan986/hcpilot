@@ -186,9 +186,9 @@ private struct LotRow: View {
                 Text(lot.product_name).font(.subheadline).fontWeight(.semibold)
                 HStack(spacing: 8) {
                     Text("Lot \(lot.lot_number)").font(.caption)
-                    Text("Exp. \(lot.expiration_date)")
+                    Text("Exp. \(lot.expiration_date, style: .date)")
                         .font(.caption2)
-                        .foregroundStyle(colorForStatus(lot.expiration_status ?? "ok"))
+                        .foregroundStyle(colorForStatus(lot.expiration_status ?? .ok))
                 }
                 .foregroundStyle(.secondary)
             }
@@ -203,12 +203,12 @@ private struct LotRow: View {
         .padding(.vertical, 4)
     }
 
-    private func colorForStatus(_ s: String) -> Color {
+    private func colorForStatus(_ s: ComplianceStatus) -> Color {
         switch s {
-        case "ok": return .green
-        case "warning": return .orange
-        case "critical", "expired": return .red
-        default: return .gray
+        case .ok: return .green
+        case .warning: return .orange
+        case .critical, .expired: return .red
+        case .unknown: return .gray
         }
     }
 }

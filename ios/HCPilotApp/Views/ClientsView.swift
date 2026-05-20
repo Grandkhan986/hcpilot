@@ -247,7 +247,7 @@ struct ClientDetailView: View {
             Text("Client archivé")
                 .fontWeight(.semibold)
             if let date = client.archived_at {
-                Text("le \(String(date.prefix(10)))")
+                Text("le \(date, style: .date)")
             }
             Spacer()
         }

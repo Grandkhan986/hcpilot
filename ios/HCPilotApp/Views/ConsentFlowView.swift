@@ -128,9 +128,9 @@ private struct StandingOrderCard: View {
                         .background(Color(.systemGray5))
                         .clipShape(Capsule())
                     if let exp = standingOrder.expires_at {
-                        Text("Exp. \(exp)")
+                        Text("Exp. \(exp, style: .date)")
                             .font(.caption2)
-                            .foregroundStyle(colorFor(standingOrder.expiration_status ?? "ok"))
+                            .foregroundStyle(colorFor(standingOrder.expiration_status ?? .ok))
                     }
                 }
             }
@@ -143,12 +143,11 @@ private struct StandingOrderCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
-    private func colorFor(_ status: String) -> Color {
+    private func colorFor(_ status: ComplianceStatus) -> Color {
         switch status {
-        case "ok": return .secondary
-        case "warning": return .orange
-        case "critical", "expired": return .red
-        default: return .secondary
+        case .ok, .unknown: return .secondary
+        case .warning: return .orange
+        case .critical, .expired: return .red
         }
     }
 }

@@ -80,7 +80,7 @@ struct InvoiceListItem: View {
                         .foregroundColor(.secondary)
                 }
 
-                Text(invoice.created_at)
+                Text(invoice.created_at, style: .date)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -311,10 +311,10 @@ struct NewInvoiceView: View {
             discount: 0,
             total: price * Double(quantity),
             items: [item],
-            due_date: "",
+            due_date: Date(),
             paid_at: nil,
             stripe_payment_intent_id: nil,
-            created_at: "",
+            created_at: Date(),
             updated_at: nil
         )
         Task {

@@ -125,7 +125,7 @@ private struct ProductRow: View {
                     Text("\(product.lot_count) lot\(product.lot_count > 1 ? "s" : "")")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    Text("Exp. \(product.nearest_expiration)")
+                    Text("Exp. \(product.nearest_expiration, style: .date)")
                         .font(.caption2)
                         .foregroundStyle(colorForStatus(product.expiration_status))
                 }
@@ -145,12 +145,12 @@ private struct ProductRow: View {
     }
 }
 
-private func colorForStatus(_ status: String) -> Color {
+private func colorForStatus(_ status: ComplianceStatus) -> Color {
     switch status {
-    case "ok": return .green
-    case "warning": return .orange
-    case "critical", "expired": return .red
-    default: return .gray
+    case .ok: return .green
+    case .warning: return .orange
+    case .critical, .expired: return .red
+    case .unknown: return .gray
     }
 }
 
@@ -167,7 +167,7 @@ final class InventoryViewModel: ObservableObject {
     }
 
     var expiringCount: Int {
-        products.filter { $0.expiration_status == "warning" || $0.expiration_status == "critical" || $0.expiration_status == "expired" }.count
+        products.filter { [.warning, .critical, .expired].contains($0.expiration_status) }.count
     }
 
     func load() async {

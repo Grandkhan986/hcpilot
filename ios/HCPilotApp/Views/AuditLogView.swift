@@ -90,14 +90,14 @@ private struct AuditRow: View {
                 Text(entry.entity_id)
                     .font(.system(.caption2, design: .monospaced))
                     .foregroundStyle(.secondary)
-                if let changes = entry.changes, !changes.isEmpty {
-                    Text(formatChanges(changes))
+                if let changes = entry.changes {
+                    Text(changes.displayString)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
                 HStack(spacing: 8) {
-                    Text(formatDate(entry.occurred_at))
+                    Text(entry.occurred_at, formatter: Self.timeFormatter)
                         .font(.caption2).foregroundStyle(.secondary)
                     if let ip = entry.ip_address {
                         Text("IP: \(ip)")
@@ -110,57 +110,60 @@ private struct AuditRow: View {
         .padding(.vertical, 4)
     }
 
-    private func labelForEntity(_ s: String) -> String {
-        switch s {
-        case "consents": return "Consentement"
-        case "clients": return "Client"
-        case "sessions": return "Session"
-        case "inventory_transactions": return "Stock"
-        default: return s.capitalized
+    private func labelForEntity(_ type: AuditEntityType) -> String {
+        switch type {
+        case .consents: return "Consentement"
+        case .clients: return "Client"
+        case .sessions: return "Session"
+        case .inventory_transactions: return "Stock (mvt)"
+        case .inventory_lots: return "Stock (lot)"
+        case .standing_orders: return "Standing order"
+        case .medical_directors: return "Medical Director"
+        case .compliance_alerts: return "Alerte"
+        case .users: return "Profil"
+        case .unknown: return "—"
         }
     }
 
-    private func iconForEntity(_ s: String) -> String {
-        switch s {
-        case "consents": return "doc.text.fill"
-        case "clients": return "person.fill"
-        case "sessions": return "calendar"
-        case "inventory_transactions": return "cube.fill"
-        default: return "circle.fill"
+    private func iconForEntity(_ type: AuditEntityType) -> String {
+        switch type {
+        case .consents: return "doc.text.fill"
+        case .clients: return "person.fill"
+        case .sessions: return "calendar"
+        case .inventory_transactions, .inventory_lots: return "cube.fill"
+        case .standing_orders: return "doc.append"
+        case .medical_directors: return "stethoscope"
+        case .compliance_alerts: return "bell.fill"
+        case .users: return "person.crop.circle"
+        case .unknown: return "questionmark.circle"
         }
     }
 
-    private func labelForAction(_ s: String) -> String {
-        switch s {
-        case "create": return "Création"
-        case "update": return "Modification"
-        case "delete": return "Suppression"
-        case "read": return "Lecture"
-        case "export": return "Export"
-        default: return s
+    private func labelForAction(_ a: AuditAction) -> String {
+        switch a {
+        case .create: return "Création"
+        case .update: return "Modification"
+        case .delete: return "Suppression"
+        case .read: return "Lecture"
+        case .export: return "Export"
+        case .unknown: return "—"
         }
     }
 
-    private func colorForAction(_ s: String) -> Color {
-        switch s {
-        case "create": return .blue
-        case "update": return .orange
-        case "delete": return .red
-        case "export": return .purple
+    private func colorForAction(_ a: AuditAction) -> Color {
+        switch a {
+        case .create: return .blue
+        case .update: return .orange
+        case .delete: return .red
+        case .export: return .purple
         default: return .secondary
         }
     }
 
-    private func formatChanges(_ changes: [String: AnyDecodable]) -> String {
-        changes.map { "\($0.key)=\($0.value.value)" }.joined(separator: ", ")
-    }
-
-    private func formatDate(_ s: String) -> String {
-        // 2026-05-20T14:32:01.123 → "20/05 14:32"
-        guard s.count >= 16 else { return s }
-        let date = String(s[s.index(s.startIndex, offsetBy: 8)..<s.index(s.startIndex, offsetBy: 10)])
-            + "/" + String(s[s.index(s.startIndex, offsetBy: 5)..<s.index(s.startIndex, offsetBy: 7)])
-        let time = String(s[s.index(s.startIndex, offsetBy: 11)..<s.index(s.startIndex, offsetBy: 16)])
-        return "\(date) \(time)"
-    }
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "fr_FR")
+        f.dateFormat = "dd/MM HH:mm"
+        return f
+    }()
 }

@@ -51,8 +51,7 @@ final class NotificationService {
     func scheduleComplianceNotifications(from dashboard: ComplianceDashboard) async {
         await removeScheduled(withPrefix: "compliance:")
 
-        if let license = dashboard.license,
-           let exp = parseYMD(license.expiration_date) {
+        if let license = dashboard.license, let exp = license.expiration_date {
             let typeLabel = license.license_type ?? "votre licence"
             for d in [90, 30, 7, 1] {
                 await scheduleOnce(
@@ -65,8 +64,7 @@ final class NotificationService {
             }
         }
 
-        if let md = dashboard.medical_director,
-           let mdEnd = parseYMD(md.contract_end_date) {
+        if let md = dashboard.medical_director, let mdEnd = md.contract_end_date {
             for d in [60, 30, 7] {
                 await scheduleOnce(
                     id: "compliance:md:J-\(d)",
@@ -78,8 +76,7 @@ final class NotificationService {
             }
         }
 
-        if let md = dashboard.medical_director,
-           let auditDate = parseYMD(md.next_audit_date) {
+        if let md = dashboard.medical_director, let auditDate = md.next_audit_date {
             await scheduleOnce(
                 id: "compliance:audit:J-7",
                 title: "Audit MD à venir",
@@ -97,7 +94,7 @@ final class NotificationService {
         }
 
         for so in dashboard.standing_orders where so.is_active {
-            if let exp = parseYMD(so.expires_at) {
+            if let exp = so.expires_at {
                 for d in [30, 7] {
                     await scheduleOnce(
                         id: "compliance:so:\(so.id):J-\(d)",

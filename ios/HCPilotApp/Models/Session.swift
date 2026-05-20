@@ -87,22 +87,3 @@ struct Session: Identifiable, Codable, Equatable {
     }
 }
 
-struct UserProfile: Codable {
-    let id: String
-    let email: String
-    let full_name: String
-    let role: String?
-    let specialty: String?
-    let phone: String?
-    let avatar_url: String?
-    let settings: UserSettings?
-}
-
-struct UserSettings: Codable {
-    let notifications: Bool?
-    let emailNotifications: Bool?
-    let SMSNotifications: Bool?
-    let darkMode: Bool?
-    let autoOptimizeRoutes: Bool?
-    let showPriceHistory: Bool?
-}

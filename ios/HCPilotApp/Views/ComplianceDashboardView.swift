@@ -61,8 +61,10 @@ private struct LicenseCard: View {
                     }
                     Divider()
                     HStack(spacing: 16) {
-                        Label("Expire le \(license.expiration_date ?? "?")", systemImage: "calendar")
-                            .font(.caption)
+                        if let exp = license.expiration_date {
+                            Label("Expire le \(LicenseCard.dateFmt.string(from: exp))", systemImage: "calendar")
+                                .font(.caption)
+                        }
                         if let d = license.days_remaining {
                             Label(remainingLabel(days: d), systemImage: "hourglass")
                                 .font(.caption)
@@ -82,6 +84,13 @@ private struct LicenseCard: View {
         if days == 0 { return "Expire aujourd'hui" }
         return "\(days) jour\(days > 1 ? "s" : "") restant\(days > 1 ? "s" : "")"
     }
+
+    static let dateFmt: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "fr_FR")
+        f.dateStyle = .medium
+        return f
+    }()
 }
 
 private struct MedicalDirectorCard: View {
@@ -157,11 +166,11 @@ private struct StandingOrdersCard: View {
                         HStack {
                             Image(systemName: "circle.fill")
                                 .font(.system(size: 8))
-                                .foregroundStyle(colorForStatus(order.expiration_status ?? "ok"))
+                                .foregroundStyle(colorForStatus(order.expiration_status ?? .ok))
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(order.formulation_name).font(.subheadline)
                                 if let exp = order.expires_at {
-                                    Text("Expire le \(exp)")
+                                    Text("Expire le \(exp, style: .date)")
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                 }
@@ -245,7 +254,7 @@ private struct ComplianceCard<Content: View>: View {
 }
 
 private struct StatusPill: View {
-    let status: String  // ok | warning | critical | expired | unknown
+    let status: ComplianceStatus
 
     var body: some View {
         Text(statusLabel(status))
@@ -258,39 +267,38 @@ private struct StatusPill: View {
     }
 }
 
-private func statusLabel(_ status: String) -> String {
+private func statusLabel(_ status: ComplianceStatus) -> String {
     switch status {
-    case "ok": return "OK"
-    case "warning": return "Attention"
-    case "critical": return "Urgent"
-    case "expired": return "Expiré"
-    default: return "—"
+    case .ok: return "OK"
+    case .warning: return "Attention"
+    case .critical: return "Urgent"
+    case .expired: return "Expiré"
+    case .unknown: return "—"
     }
 }
 
-private func colorForStatus(_ status: String) -> Color {
+private func colorForStatus(_ status: ComplianceStatus) -> Color {
     switch status {
-    case "ok": return .green
-    case "warning": return .orange
-    case "critical": return .red
-    case "expired": return .red
-    default: return .gray
+    case .ok: return .green
+    case .warning: return .orange
+    case .critical, .expired: return .red
+    case .unknown: return .gray
     }
 }
 
-private func iconForSeverity(_ severity: String) -> String {
+private func iconForSeverity(_ severity: AlertSeverity) -> String {
     switch severity {
-    case "critical": return "exclamationmark.octagon.fill"
-    case "warning": return "exclamationmark.triangle.fill"
-    default: return "info.circle"
+    case .critical: return "exclamationmark.octagon.fill"
+    case .warning: return "exclamationmark.triangle.fill"
+    case .info: return "info.circle"
     }
 }
 
-private func colorForSeverity(_ severity: String) -> Color {
+private func colorForSeverity(_ severity: AlertSeverity) -> Color {
     switch severity {
-    case "critical": return .red
-    case "warning": return .orange
-    default: return .blue
+    case .critical: return .red
+    case .warning: return .orange
+    case .info: return .blue
     }
 }
 
