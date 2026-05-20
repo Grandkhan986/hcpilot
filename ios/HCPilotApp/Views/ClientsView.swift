@@ -157,12 +157,16 @@ struct ClientDetailView: View {
 
                 contactCard
 
-                if let history = client.medical_history, !history.isEmpty {
-                    medicalCard(history: history)
+                if !client.medical_conditions.isEmpty {
+                    medicalCard(history: client.medical_conditions.joined(separator: ", "))
                 }
 
-                if let allergies = client.allergies, !allergies.isEmpty {
-                    allergiesCard(allergies: allergies)
+                if !client.allergies.isEmpty {
+                    allergiesCard(allergies: client.allergies.joined(separator: ", "))
+                }
+
+                if !client.medications.isEmpty {
+                    medicationsCard(medications: client.medications)
                 }
 
                 if let info = actionInfo {
@@ -261,12 +265,38 @@ struct ClientDetailView: View {
             if let email = client.email {
                 InfoRow(icon: "envelope", label: "Email", value: email)
             }
-            if let address = client.address {
-                InfoRow(icon: "location", label: "Adresse", value: address)
+            if !client.full_address.isEmpty {
+                InfoRow(icon: "location", label: "Adresse", value: client.full_address)
+            }
+            if let access = client.access_notes, !access.isEmpty {
+                InfoRow(icon: "key", label: "Accès", value: access)
+            }
+            if let name = client.emergency_contact_name, !name.isEmpty {
+                let phone = client.emergency_contact_phone ?? ""
+                InfoRow(icon: "exclamationmark.bubble", label: "Contact urgence", value: "\(name) \(phone)".trimmingCharacters(in: .whitespaces))
             }
         }
         .padding()
         .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+
+    private func medicationsCard(medications: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "pills.fill").foregroundColor(.blue)
+                Text("Médication en cours").font(.headline)
+            }
+            ForEach(medications, id: \.self) { med in
+                HStack(spacing: 8) {
+                    Text("•")
+                    Text(med).font(.subheadline)
+                    Spacer()
+                }
+            }
+        }
+        .padding()
+        .background(Color.blue.opacity(0.08))
         .cornerRadius(12)
     }
 

@@ -206,7 +206,7 @@ struct SessionDetailView: View {
                 consentSection
 
                 // Notes
-                if let notes = session.notes, !notes.isEmpty {
+                if let notes = session.clinical_notes, !notes.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Notes")
                             .font(.headline)
@@ -546,17 +546,17 @@ struct NewSessionView: View {
                             // Auto-remplit l'adresse depuis le client sélectionné
                             // si l'utilisateur n'a pas encore tapé une adresse custom.
                             if let p = clients.first(where: { $0.id == newId }),
-                               address.isEmpty || clients.contains(where: { $0.address == address }) {
-                                address = p.address ?? ""
+                               address.isEmpty || clients.contains(where: { $0.full_address == address }) {
+                                address = p.full_address
                             }
                         }
                     }
                 }
 
-                Section(header: Text("Service")) {
-                    Picker("Type de service", selection: $serviceType) {
+                Section(header: Text("Formulation")) {
+                    Picker("Formulation IV", selection: $serviceType) {
                         ForEach(serviceTypes, id: \.self) { type in
-                            Text(type.replacingOccurrences(of: "_", with: " ")).tag(type)
+                            Text(type).tag(type)
                         }
                     }
                     DatePicker("Date", selection: $scheduledAt, displayedComponents: [.date, .hourAndMinute])
@@ -566,17 +566,17 @@ struct NewSessionView: View {
                 Section(header: Text("Adresse")) {
                     TextField("Adresse", text: $address, axis: .vertical)
                         .lineLimit(1...3)
-                    if let p = selectedClient, p.address != address, !address.isEmpty {
+                    if let p = selectedClient, p.full_address != address, !address.isEmpty {
                         Text("⚠ Adresse différente de l'adresse du client")
                             .font(.caption2)
                             .foregroundStyle(.orange)
                     }
                 }
 
-                Section(header: Text("Détails")) {
-                    TextField("Notes", text: $notes, axis: .vertical)
+                Section(header: Text("Détails cliniques")) {
+                    TextField("Notes cliniques", text: $notes, axis: .vertical)
                         .lineLimit(2...5)
-                    TextField("Montant (€)", text: $totalAmount)
+                    TextField("Montant ($)", text: $totalAmount)
                         .keyboardType(.decimalPad)
                 }
 
@@ -606,7 +606,7 @@ struct NewSessionView: View {
             clients = try await APIService.shared.getClients(archived: false)
             if selectedClientId.isEmpty, let first = clients.first {
                 selectedClientId = first.id
-                address = first.address ?? ""
+                address = first.full_address
             }
         } catch {
             errorMessage = "Impossible de charger les clients : \(error.localizedDescription)"
@@ -618,25 +618,36 @@ struct NewSessionView: View {
         // Si l'adresse est inchangée par rapport à celle du client, on laisse
         // le backend copier ses coords. Si l'adresse a été éditée, on envoie nil
         // pour les coords — le backend re-géocodera si un token Mapbox est dispo.
-        let useCustomAddress = address != (client.address ?? "")
+        let useCustomAddress = address != client.full_address
         let total = Double(totalAmount.replacingOccurrences(of: ",", with: ".")) ?? 0
 
         let newSession = Session(
             id: UUID().uuidString,
             client_id: client.id,
+            nurse_id: "",  // serveur remplit depuis le JWT
             client_name: client.full_name,
             formulation_name: serviceType,
+            formulation_inventory_id: nil,
             status: .scheduled,
             scheduled_at: scheduledAt,
             created_at: Date(),
             address: address,
             latitude: useCustomAddress ? nil : client.latitude,
             longitude: useCustomAddress ? nil : client.longitude,
-            notes: notes.isEmpty ? nil : notes,
             total: total,
             estimated_duration: estimatedDuration,
             started_at: nil,
-            completed_at: nil
+            completed_at: nil,
+            iv_start_time: nil,
+            iv_end_time: nil,
+            pre_vitals: nil,
+            during_vitals: nil,
+            post_vitals: nil,
+            drip_rate: nil,
+            clinical_notes: notes.isEmpty ? nil : notes,
+            photos_paths: [],
+            cancelled_at: nil,
+            cancellation_reason: nil
         )
         Task {
             do {

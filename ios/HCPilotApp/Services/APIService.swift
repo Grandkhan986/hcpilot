@@ -353,16 +353,25 @@ class APIService {
         return try await put("/sessions/\(session.id)", body: session)
     }
 
-    /// Patch partiel d'une session (PATCH-like).
+    /// Patch partiel d'une session (PATCH-like). Aligné brief : champs cliniques
+    /// vitals, drip_rate, IV times pour saisie pendant/après la perfusion.
     struct SessionPatch: Encodable {
         var formulation_name: String?
+        var formulation_inventory_id: String?
         var scheduled_at: Date?
         var address: String?
         var latitude: Double?
         var longitude: Double?
-        var notes: String?
+        var clinical_notes: String?
         var estimated_duration: Int?
         var total_amount: Double?
+        var iv_start_time: Date?
+        var iv_end_time: Date?
+        var pre_vitals: [String: String]?
+        var during_vitals: [String: String]?
+        var post_vitals: [String: String]?
+        var drip_rate: String?
+        var cancellation_reason: String?
     }
 
     func updateSession(id: String, patch: SessionPatch) async throws -> Session {
@@ -399,6 +408,8 @@ class APIService {
     /// Patch envoyé sur PUT /clients/{id}. Tous champs Optional :
     /// - nil  → champ non touché côté backend (filtré)
     /// - ""   → champ vidé
+    /// Aligné sur le brief schema `clients` (adresse splittée en 5 champs,
+    /// allergies/medical_conditions/medications en arrays).
     struct ClientPatch: Encodable {
         var first_name: String?
         var last_name: String?
@@ -406,9 +417,17 @@ class APIService {
         var phone: String?
         var date_of_birth: String?
         var gender: String?
-        var address: String?
-        var medical_history: String?
-        var allergies: String?
+        var address_line1: String?
+        var address_line2: String?
+        var city: String?
+        var state_code: String?
+        var postal_code: String?
+        var access_notes: String?
+        var allergies: [String]?
+        var medical_conditions: [String]?
+        var medications: [String]?
+        var emergency_contact_name: String?
+        var emergency_contact_phone: String?
     }
 
     /// Réponse de PUT /clients/{id} : client mis à jour + nb sessions futures
@@ -417,7 +436,10 @@ class APIService {
         let id: String
         let first_name: String
         let last_name: String
-        let address: String?
+        let address_line1: String?
+        let city: String?
+        let state_code: String?
+        let postal_code: String?
         let latitude: Double?
         let longitude: Double?
         let archived_at: String?

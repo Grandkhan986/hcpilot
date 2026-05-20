@@ -105,17 +105,18 @@ async def test_address_change_syncs_future_scheduled_visits(client: AsyncClient)
     _reset_state()
     headers = {"Authorization": f"Bearer {_token()}"}
 
-    new_addr = "100 Rue de Rivoli, 75001 Paris"
+    # Brief : adresse splittée en 5 champs ; nouveau line1 = adresse changée
+    new_line1 = "100 Rue de Rivoli"
     r = await client.put(
         "/clients/pat_001",
-        json={"address": new_addr},
+        json={"address_line1": new_line1},
         headers=headers,
     )
     assert r.status_code == 200
     assert r.json()["synced_future_sessions"] >= 1
 
     v = (await client.get("/sessions/vis_001", headers=headers)).json()
-    assert v["address"] == new_addr
+    assert new_line1 in v["address"]
 
 
 @pytest.mark.anyio
@@ -127,10 +128,9 @@ async def test_address_change_does_not_touch_past_or_in_progress(client: AsyncCl
     await client.post("/sessions/vis_001/start", headers=headers)
     original_addr = (await client.get("/sessions/vis_001", headers=headers)).json()["address"]
 
-    new_addr = "200 Avenue Foch, 75116 Paris"
     await client.put(
         "/clients/pat_001",
-        json={"address": new_addr},
+        json={"address_line1": "200 Avenue Foch"},
         headers=headers,
     )
 

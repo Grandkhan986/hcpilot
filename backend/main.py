@@ -12,7 +12,7 @@ from urllib.parse import quote
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Tuple
 from jose import jwt
 from datetime import datetime, timedelta
@@ -92,43 +92,77 @@ class User(BaseModel):
     created_at: datetime
 
 class Client(BaseModel):
+    """Brief schema `clients` — patient privé du soignant IV mobile."""
     id: str
+    nurse_id: str  # propriétaire RLS (brief §RLS)
     first_name: str
     last_name: str
     email: Optional[str] = None
     phone: Optional[str] = None
     date_of_birth: Optional[str] = None
     gender: Optional[str] = None
-    address: Optional[str] = None
+    # Adresse splittée selon brief (5 champs au lieu d'un seul)
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    city: Optional[str] = None
+    state_code: Optional[str] = None  # 2 chars : "CA", "TX"...
+    postal_code: Optional[str] = None
+    access_notes: Optional[str] = None  # code accès, étage, parking
+    # Coords géocodées (denormalized pour /optimize/routes — pas dans brief schema
+    # mais essentiel pour notre cache offline + route Mapbox).
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    medical_history: Optional[str] = None
-    allergies: Optional[str] = None
+    # Antécédents en arrays (jsonb dans le brief — pas une string libre)
+    allergies: List[str] = Field(default_factory=list)
+    medical_conditions: List[str] = Field(default_factory=list)
+    medications: List[str] = Field(default_factory=list)
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
+    id_document_path: Optional[str] = None  # photo ID stockée (Supabase Storage en prod)
     # Soft delete : la fiche reste consultable en "Archives" mais sort de la liste
-    # principale. Conserve l'historique des sessions/factures pour la facturation
-    # et l'audit HIPAA.
+    # principale. Conserve l'historique HIPAA (audit + facturation).
     archived_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
+
 class Session(BaseModel):
     """Brief : table `sessions` — une perfusion IV chez un client.
-    Modèle private pay : pas de champs insurance/copay."""
+    Modèle private pay : pas de champs insurance/copay.
+    Capture l'ensemble des données cliniques nécessaires à un audit FDA en cas
+    de rappel produit (formulation_inventory_id) ou à une revue HIPAA."""
     id: str
     client_id: str
     nurse_id: str
     scheduled_at: datetime
     formulation_name: str  # ex: "Myers Cocktail", "NAD+ 500mg"
+    # Lien vers le lot inventaire utilisé pour cette session — critique pour la
+    # traçabilité FDA en cas de rappel.
+    formulation_inventory_id: Optional[str] = None
     status: str  # scheduled | en_route | in_progress | completed | cancelled | no_show
+    # Adresse + coords denormalisées (snapshot au moment de la création — on
+    # garde l'adresse historique même si le client déménage).
     address: str
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     estimated_duration: int  # minutes
-    notes: Optional[str] = None
+    # Heures effectives de la perfusion IV (distinctes du clock-in/out session)
+    iv_start_time: Optional[datetime] = None
+    iv_end_time: Optional[datetime] = None
+    # Vitals — jsonb libre : {"bp_sys": 120, "bp_dia": 80, "hr": 72, "temp": 36.8, ...}
+    pre_vitals: Optional[dict] = None
+    during_vitals: Optional[dict] = None
+    post_vitals: Optional[dict] = None
+    drip_rate: Optional[str] = None  # ex: "50 mL/h"
+    clinical_notes: Optional[str] = None  # observations cliniques (renommé depuis notes)
+    photos_paths: List[str] = Field(default_factory=list)  # photos avant/pendant/après
     total_amount: float
-    # Clock-in / clock-out — drive duration calculation, billing, audit trail.
+    # Clock-in / clock-out de la session entière (incluant route + IV + débrief)
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    # Annulation (status=cancelled implique cancelled_at + reason renseignés)
+    cancelled_at: Optional[datetime] = None
+    cancellation_reason: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -431,33 +465,54 @@ MOCK_USERS = {
 
 MOCK_CLIENTS = [
     {
-        "id": "pat_001", "first_name": "Jean", "last_name": "Martin",
+        "id": "pat_001", "nurse_id": "usr_001",
+        "first_name": "Jean", "last_name": "Martin",
         "email": "jean.martin@email.com", "phone": "06 12 34 56 78",
         "date_of_birth": "1958-03-15", "gender": "M",
-        "address": "12 Rue de la Paix, 75002 Paris",
+        "address_line1": "12 Rue de la Paix", "address_line2": None,
+        "city": "Paris", "state_code": "CA", "postal_code": "75002",
+        "access_notes": "Code porte : 1234B, 3e étage gauche",
         "latitude": 48.8688, "longitude": 2.3315,
-        "medical_history": "Diabète type 2, hypertension",
-        "allergies": "Pénicilline",
+        "allergies": ["Pénicilline"],
+        "medical_conditions": ["Diabète type 2", "Hypertension"],
+        "medications": ["Metformine 1000mg", "Lisinopril 10mg"],
+        "emergency_contact_name": "Marie Martin (épouse)",
+        "emergency_contact_phone": "06 11 22 33 44",
+        "id_document_path": None,
         "created_at": "2024-02-01T09:00:00", "updated_at": "2024-06-01T14:30:00"
     },
     {
-        "id": "pat_002", "first_name": "Françoise", "last_name": "Bernard",
+        "id": "pat_002", "nurse_id": "usr_001",
+        "first_name": "Françoise", "last_name": "Bernard",
         "email": "f.bernard@email.com", "phone": "06 98 76 54 32",
         "date_of_birth": "1945-11-22", "gender": "F",
-        "address": "45 Avenue Victor Hugo, 75016 Paris",
+        "address_line1": "45 Avenue Victor Hugo", "address_line2": "Apt 3B",
+        "city": "Paris", "state_code": "CA", "postal_code": "75016",
+        "access_notes": "Interphone : Bernard. Pas d'ascenseur",
         "latitude": 48.8703, "longitude": 2.2855,
-        "medical_history": "Post-op hanche droite, arthrose",
-        "allergies": None,
+        "allergies": [],
+        "medical_conditions": ["Post-op hanche droite", "Arthrose"],
+        "medications": ["Paracétamol 1g PRN"],
+        "emergency_contact_name": "Pierre Bernard (fils)",
+        "emergency_contact_phone": "06 55 44 33 22",
+        "id_document_path": None,
         "created_at": "2024-03-10T11:00:00", "updated_at": "2024-06-15T09:00:00"
     },
     {
-        "id": "pat_003", "first_name": "Ahmed", "last_name": "Benali",
+        "id": "pat_003", "nurse_id": "usr_001",
+        "first_name": "Ahmed", "last_name": "Benali",
         "email": "a.benali@email.com", "phone": "07 11 22 33 44",
         "date_of_birth": "1972-07-08", "gender": "M",
-        "address": "8 Boulevard Haussmann, 75009 Paris",
+        "address_line1": "8 Boulevard Haussmann", "address_line2": None,
+        "city": "Paris", "state_code": "CA", "postal_code": "75009",
+        "access_notes": "Sonner deux fois",
         "latitude": 48.8730, "longitude": 2.3372,
-        "medical_history": "Insuffisance cardiaque, BPCO",
-        "allergies": "Aspirine, Iode",
+        "allergies": ["Aspirine", "Iode"],
+        "medical_conditions": ["Insuffisance cardiaque", "BPCO"],
+        "medications": ["Furosémide 40mg", "Ventoline inhalateur PRN"],
+        "emergency_contact_name": "Leila Benali (sœur)",
+        "emergency_contact_phone": "07 99 88 77 66",
+        "id_document_path": None,
         "created_at": "2024-04-05T08:30:00", "updated_at": "2024-06-20T16:00:00"
     },
 ]
@@ -467,30 +522,51 @@ MOCK_SESSIONS = [
         "id": "vis_001", "client_id": "pat_001", "nurse_id": "usr_001",
         "scheduled_at": datetime.now().replace(hour=9, minute=0).isoformat(),
         "formulation_name": "Myers Cocktail", "status": "scheduled",
+        "formulation_inventory_id": None,
         "address": "12 Rue de la Paix, 75002 Paris",
         "latitude": 48.8688, "longitude": 2.3315,
-        "estimated_duration": 60, "notes": "Recharge énergie post-épuisement",
+        "estimated_duration": 60,
+        "iv_start_time": None, "iv_end_time": None,
+        "pre_vitals": None, "during_vitals": None, "post_vitals": None,
+        "drip_rate": None,
+        "clinical_notes": "Recharge énergie post-épuisement. Vérifier hydratation au préalable.",
+        "photos_paths": [],
         "total_amount": 175.00,
+        "cancelled_at": None, "cancellation_reason": None,
         "created_at": "2024-06-01T08:00:00", "updated_at": "2024-06-01T08:00:00"
     },
     {
         "id": "vis_002", "client_id": "pat_002", "nurse_id": "usr_001",
         "scheduled_at": datetime.now().replace(hour=11, minute=0).isoformat(),
         "formulation_name": "NAD+ 250mg", "status": "scheduled",
+        "formulation_inventory_id": None,
         "address": "45 Avenue Victor Hugo, 75016 Paris",
         "latitude": 48.8703, "longitude": 2.2855,
-        "estimated_duration": 90, "notes": "Premier traitement NAD+ — démarrage débit lent",
+        "estimated_duration": 90,
+        "iv_start_time": None, "iv_end_time": None,
+        "pre_vitals": None, "during_vitals": None, "post_vitals": None,
+        "drip_rate": None,
+        "clinical_notes": "Premier traitement NAD+ — démarrage débit lent. Surveiller pression thoracique.",
+        "photos_paths": [],
         "total_amount": 350.00,
+        "cancelled_at": None, "cancellation_reason": None,
         "created_at": "2024-06-01T08:00:00", "updated_at": "2024-06-01T08:00:00"
     },
     {
         "id": "vis_003", "client_id": "pat_003", "nurse_id": "usr_001",
         "scheduled_at": datetime.now().replace(hour=14, minute=30).isoformat(),
         "formulation_name": "NAD+ 500mg", "status": "scheduled",
+        "formulation_inventory_id": None,
         "address": "8 Boulevard Haussmann, 75009 Paris",
         "latitude": 48.8730, "longitude": 2.3372,
-        "estimated_duration": 150, "notes": "Dose haute — monitoring TA + pouls",
+        "estimated_duration": 150,
+        "iv_start_time": None, "iv_end_time": None,
+        "pre_vitals": None, "during_vitals": None, "post_vitals": None,
+        "drip_rate": None,
+        "clinical_notes": "Dose haute — monitoring TA + pouls obligatoire. Insuffisance cardiaque connue.",
+        "photos_paths": [],
         "total_amount": 650.00,
+        "cancelled_at": None, "cancellation_reason": None,
         "created_at": "2024-06-01T08:00:00", "updated_at": "2024-06-01T08:00:00"
     },
 ]
@@ -918,18 +994,38 @@ async def list_patients(
     ]
     return results[skip:skip + limit]
 
+def _full_address(c: dict) -> str:
+    """Concatène les 5 champs d'adresse (brief schema) en une string pour Mapbox."""
+    parts = [
+        c.get("address_line1"),
+        c.get("address_line2"),
+        c.get("city"),
+        c.get("postal_code"),
+        c.get("state_code"),
+    ]
+    return ", ".join(p for p in parts if p)
+
+
+def _address_changed(patch: dict, current: dict) -> bool:
+    """Détecte si un des 5 champs d'adresse change."""
+    fields = ["address_line1", "address_line2", "city", "state_code", "postal_code"]
+    return any(f in patch and patch[f] != current.get(f) for f in fields)
+
+
 @app.post("/clients", status_code=status.HTTP_201_CREATED)
 async def create_patient(patient: dict, payload: dict = Depends(verify_token)):
-    """Create a new patient. Auto-geocodes address if lat/lng not provided."""
+    """Create a new client. Auto-geocodes address if lat/lng not provided."""
     now = datetime.now().isoformat()
     new_patient = {
         **patient,
         "id": f"pat_{len(MOCK_CLIENTS) + 1:03d}",
+        "nurse_id": patient.get("nurse_id") or payload.get("sub"),
         "created_at": now,
         "updated_at": now,
     }
-    if new_patient.get("address") and new_patient.get("latitude") is None:
-        coords = await geocode_address(new_patient["address"])
+    full_addr = _full_address(new_patient)
+    if full_addr and new_patient.get("latitude") is None:
+        coords = await geocode_address(full_addr)
         if coords:
             new_patient["longitude"], new_patient["latitude"] = coords
     MOCK_CLIENTS.append(new_patient)
@@ -960,12 +1056,11 @@ async def update_patient(client_id: str, patient: dict, payload: dict = Depends(
     for i, p in enumerate(MOCK_CLIENTS):
         if p["id"] == client_id:
             merged = {**p, **patient, "updated_at": datetime.now().isoformat()}
-            address_changed = (
-                "address" in patient and patient["address"] != p.get("address")
-            )
+            address_changed = _address_changed(patient, p)
             coords_overridden = "latitude" in patient or "longitude" in patient
-            if address_changed and not coords_overridden and merged.get("address"):
-                coords = await geocode_address(merged["address"])
+            if address_changed and not coords_overridden:
+                full_addr = _full_address(merged)
+                coords = await geocode_address(full_addr) if full_addr else None
                 if coords:
                     merged["longitude"], merged["latitude"] = coords
                 else:
@@ -976,7 +1071,7 @@ async def update_patient(client_id: str, patient: dict, payload: dict = Depends(
             synced_visits = 0
             if address_changed:
                 now = datetime.now()
-                new_addr = merged.get("address")
+                new_addr = _full_address(merged)
                 new_lat = merged.get("latitude")
                 new_lng = merged.get("longitude")
                 for v in MOCK_SESSIONS:
@@ -991,7 +1086,7 @@ async def update_patient(client_id: str, patient: dict, payload: dict = Depends(
                         continue
                     if scheduled_at < now:
                         continue
-                    if new_addr is not None:
+                    if new_addr:
                         v["address"] = new_addr
                     v["latitude"] = new_lat
                     v["longitude"] = new_lng

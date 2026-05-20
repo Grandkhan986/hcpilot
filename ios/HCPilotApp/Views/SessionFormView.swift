@@ -15,15 +15,16 @@ struct SessionFormView: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
 
-    private let serviceTypes = ["IV_Hydration", "Post_Op", "Primary_Care", "Vaccination", "Consultation"]
+    // Formulations brief-aligned (cf. /formulations backend) — IV products réels.
+    private let serviceTypes = ["Myers Cocktail", "NAD+ 250mg", "NAD+ 500mg"]
 
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Service")) {
-                    Picker("Type", selection: $sessionType) {
+                Section(header: Text("Formulation")) {
+                    Picker("Formulation IV", selection: $sessionType) {
                         ForEach(serviceTypes, id: \.self) { t in
-                            Text(t.replacingOccurrences(of: "_", with: " ")).tag(t)
+                            Text(t).tag(t)
                         }
                     }
                     DatePicker("Date", selection: $scheduledAt, displayedComponents: [.date, .hourAndMinute])
@@ -35,10 +36,10 @@ struct SessionFormView: View {
                         .lineLimit(1...3)
                 }
 
-                Section(header: Text("Détails")) {
-                    TextField("Notes", text: $notes, axis: .vertical)
+                Section(header: Text("Détails cliniques")) {
+                    TextField("Notes cliniques", text: $notes, axis: .vertical)
                         .lineLimit(2...5)
-                    TextField("Montant (€)", text: $totalAmount)
+                    TextField("Montant ($)", text: $totalAmount)
                         .keyboardType(.decimalPad)
                 }
 
@@ -64,7 +65,7 @@ struct SessionFormView: View {
     private func preload() {
         sessionType = session.formulation_name
         address = session.address
-        notes = session.notes ?? ""
+        notes = session.clinical_notes ?? ""
         scheduledAt = session.scheduled_at
         estimatedDuration = session.estimated_duration ?? 60
         totalAmount = String(format: "%.2f", session.total)
@@ -80,11 +81,12 @@ struct SessionFormView: View {
             scheduled_at: scheduledAt != session.scheduled_at ? scheduledAt : nil,
             address: address != session.address ? address : nil,
             // Adresse changée → on laisse le backend regéocoder (lat/lng à nil)
-            latitude: address != session.address ? nil : nil,
-            longitude: address != session.address ? nil : nil,
-            notes: notes != (session.notes ?? "") ? notes : nil,
+            latitude: nil,
+            longitude: nil,
+            clinical_notes: notes != (session.clinical_notes ?? "") ? notes : nil,
             estimated_duration: estimatedDuration != (session.estimated_duration ?? 60) ? estimatedDuration : nil,
-            total_amount: Double(totalAmount.replacingOccurrences(of: ",", with: ".")).map { $0 != session.total ? $0 : nil } ?? nil
+            total_amount: Double(totalAmount.replacingOccurrences(of: ",", with: "."))
+                .flatMap { $0 != session.total ? $0 : nil }
         )
 
         do {
