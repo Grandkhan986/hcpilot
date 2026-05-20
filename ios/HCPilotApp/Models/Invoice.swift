@@ -2,9 +2,9 @@ import Foundation
 
 struct Invoice: Identifiable, Hashable, Codable {
     let id: String
-    let patient_id: String
-    var patient_name: String?
-    let visit_id: String?
+    let client_id: String
+    var client_name: String?
+    let session_id: String?
     let invoice_number: String
     let status: InvoiceStatus
     let subtotal: Double?

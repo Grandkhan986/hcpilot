@@ -301,9 +301,9 @@ struct NewInvoiceView: View {
         let item = InvoiceItem(description: description, quantity: quantity, price: price)
         let invoice = Invoice(
             id: UUID().uuidString,
-            patient_id: "pat_001",
-            patient_name: nil,
-            visit_id: nil,
+            client_id: "pat_001",
+            client_name: nil,
+            session_id: nil,
             invoice_number: "INV-NEW",
             status: .draft,
             subtotal: price * Double(quantity),

@@ -34,7 +34,9 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>HCPilot utilise votre position pour optimiser vos itinéraires de visites.</string>
+	<string>HCPilot utilise votre position pour optimiser vos itinéraires et pour horodater la signature des consentements (conformité HIPAA).</string>
+	<key>NSCameraUsageDescription</key>
+	<string>HCPilot utilise la caméra pour scanner les codes-barres des produits IV (suivi des lots et péremptions).</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

@@ -51,30 +51,54 @@ struct HomeView: View {
                     .padding(.horizontal)
 
                     // Today's Route Map
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
+                    if !viewModel.routeStops.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
                             Text("Ma Journée")
                                 .font(.headline)
-                            Spacer()
-                            Button("Optimiser", action: viewModel.optimizeRoute)
-                                .font(.caption)
-                                .foregroundStyle(.primary)
-                        }
-                        MapView(coordinate: viewModel.currentLocation)
-                            .frame(height: 200)
-                            .cornerRadius(12)
 
-                        Button(viewModel.nextActiveVisit?.status == .in_progress ? "Continuer" : "Commencer") {
-                            if let next = viewModel.nextActiveVisit {
-                                viewModel.startVisit(next)
+                            NavigationLink(destination: RouteMapView()) {
+                                RouteMapContent(
+                                    stops: viewModel.routeStops,
+                                    polylineCoordinates: viewModel.polylineCoordinates,
+                                    cameraPosition: .constant(.region(
+                                        RouteMapView.region(for: viewModel.routeStops)
+                                    ))
+                                )
+                                .frame(height: 180)
+                                .cornerRadius(12)
+                                .allowsHitTesting(false)
+                                .overlay(alignment: .topTrailing) {
+                                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                        .font(.caption)
+                                        .padding(8)
+                                        .background(.regularMaterial)
+                                        .clipShape(Circle())
+                                        .padding(8)
+                                }
                             }
+                            .buttonStyle(.plain)
+
+                            VisitLifecycleButton(
+                                visit: viewModel.nextActiveVisit,
+                                onStart: { viewModel.startVisit($0) },
+                                onComplete: { viewModel.completeVisit($0) }
+                            )
                         }
-                        .frame(maxWidth: .infinity)
-                        .buttonStyle(PrimaryButtonStyle())
-                        .disabled(viewModel.nextActiveVisit == nil)
-                        .opacity(viewModel.nextActiveVisit == nil ? 0.5 : 1)
+                        .padding(.horizontal)
+                    } else if viewModel.nextActiveVisit != nil {
+                        // Visites du jour sans coordonnées (cas edge) : on garde le bouton lifecycle
+                        // pour ne pas perdre la fonctionnalité "Commencer/Terminer".
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Ma Journée")
+                                .font(.headline)
+                            VisitLifecycleButton(
+                                visit: viewModel.nextActiveVisit,
+                                onStart: { viewModel.startVisit($0) },
+                                onComplete: { viewModel.completeVisit($0) }
+                            )
+                        }
+                        .padding(.horizontal)
                     }
-                    .padding(.horizontal)
 
                     // Upcoming Visits
                     VStack(alignment: .leading, spacing: 8) {
@@ -147,18 +171,49 @@ struct HomeView: View {
     }
 }
 
-struct MapView: View {
-    let coordinate: CLLocationCoordinate2D
+/// Bouton de cycle de vie d'une visite. En `scheduled` : action inline
+/// "Commencer". En `in_progress` : navigation vers le détail (où la sheet
+/// LotUsageSheet capture le lot avant de clôturer). Affiche un compteur live.
+struct VisitLifecycleButton: View {
+    let visit: Visit?
+    let onStart: (Visit) -> Void
+    let onComplete: (Visit) -> Void  // conservé pour compat, non utilisé en in_progress
 
     var body: some View {
-        Map(initialPosition: .region(region))
-    }
-
-    private var region: MKCoordinateRegion {
-        MKCoordinateRegion(
-            center: coordinate,
-            span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-        )
+        if let visit, visit.status == .in_progress {
+            VStack(spacing: 6) {
+                if let startedAt = visit.started_at {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock.fill")
+                            .font(.caption2)
+                        Text("En cours depuis")
+                            .font(.caption2)
+                        Text(startedAt, style: .timer)
+                            .font(.caption2.monospacedDigit())
+                    }
+                    .foregroundStyle(.secondary)
+                }
+                NavigationLink {
+                    VisitDetailView(visit: visit, onAction: {})
+                } label: {
+                    Text("Terminer la session")
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(Color.green)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                }
+            }
+        } else {
+            Button("Commencer") {
+                if let visit { onStart(visit) }
+            }
+            .frame(maxWidth: .infinity)
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(visit == nil)
+            .opacity(visit == nil ? 0.5 : 1)
+        }
     }
 }
 

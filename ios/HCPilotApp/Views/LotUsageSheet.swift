@@ -1,0 +1,214 @@
+import SwiftUI
+
+/// Sélecteur de lot utilisé à la fin d'une visite. Présenté avant l'appel à
+/// `/visits/{id}/complete` : on enregistre l'usage du lot (décrément + traçabilité)
+/// puis on clôture la visite. Possibilité de "Sans scan" si pas de lot dispo
+/// (le complete est alors fait sans entrée d'inventaire).
+struct LotUsageSheet: View {
+    let visit: Visit
+    /// Si fourni, filtre les lots dont le `product_name` matche (utile quand
+    /// on connaît la formulation via un consentement déjà signé).
+    let preferredProductName: String?
+    var onCompleted: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var lots: [InventoryLot] = []
+    @State private var selectedLotId: String?
+    @State private var quantity: Int = 1
+    @State private var notes: String = ""
+    @State private var isLoading = true
+    @State private var isSubmitting = false
+    @State private var errorMessage: String?
+    @State private var filterToPreferred = true
+
+    private var displayedLots: [InventoryLot] {
+        let filtered = (filterToPreferred && preferredProductName != nil)
+            ? lots.filter { $0.product_name == preferredProductName }
+            : lots
+        return filtered.sorted { $0.expiration_date < $1.expiration_date }
+    }
+
+    private var selectedLot: InventoryLot? {
+        lots.first(where: { $0.id == selectedLotId })
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                if let preferred = preferredProductName {
+                    HStack {
+                        Toggle("Filtrer : \(preferred)", isOn: $filterToPreferred)
+                            .font(.caption)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                }
+
+                if isLoading {
+                    Spacer(); ProgressView(); Spacer()
+                } else if displayedLots.isEmpty {
+                    Spacer()
+                    VStack(spacing: 10) {
+                        Image(systemName: "cube.box").font(.largeTitle).foregroundStyle(.secondary)
+                        Text("Aucun lot disponible").foregroundStyle(.secondary)
+                        Text(filterToPreferred ? "Désactivez le filtre pour voir tous les lots." : "Ajoutez un lot via l'onglet Stock.")
+                            .font(.caption2).foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    Spacer()
+                } else {
+                    List(displayedLots) { lot in
+                        LotRow(lot: lot, isSelected: lot.id == selectedLotId)
+                            .contentShape(Rectangle())
+                            .onTapGesture { selectedLotId = lot.id }
+                    }
+                    .listStyle(.plain)
+                }
+
+                if let lot = selectedLot {
+                    VStack(spacing: 10) {
+                        Divider()
+                        HStack {
+                            Text("Quantité utilisée").font(.subheadline)
+                            Spacer()
+                            Stepper("\(quantity)", value: $quantity, in: 1...lot.quantity_remaining)
+                                .labelsHidden()
+                            Text("\(quantity)").frame(minWidth: 30)
+                        }
+                        TextField("Notes (optionnel)", text: $notes, axis: .vertical)
+                            .lineLimit(1...2)
+                            .padding(8)
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                    .padding()
+                }
+
+                if let err = errorMessage {
+                    Text(err).font(.caption).foregroundStyle(.red).padding(.bottom, 4)
+                }
+
+                actionBar
+            }
+            .navigationTitle("Terminer la session")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Annuler") { dismiss() }
+                }
+            }
+            .task { await loadLots() }
+        }
+    }
+
+    private var actionBar: some View {
+        VStack(spacing: 8) {
+            Button {
+                Task { await confirmWithUsage() }
+            } label: {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                    Text("Confirmer la consommation et terminer").fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(selectedLot == nil || isSubmitting ? Color.gray : Color.green)
+                .foregroundStyle(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .disabled(selectedLot == nil || isSubmitting)
+
+            Button {
+                Task { await skipScan() }
+            } label: {
+                Text("Terminer sans enregistrer de lot")
+                    .font(.caption)
+            }
+            .disabled(isSubmitting)
+        }
+        .padding(.horizontal)
+        .padding(.bottom, 12)
+    }
+
+    private func loadLots() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            lots = try await APIService.shared.getInventoryLots()
+        } catch {
+            errorMessage = "Chargement lots : \(error.localizedDescription)"
+        }
+    }
+
+    private func confirmWithUsage() async {
+        guard let lot = selectedLot else { return }
+        isSubmitting = true
+        errorMessage = nil
+        defer { isSubmitting = false }
+        do {
+            _ = try await APIService.shared.recordUsage(RecordUsageRequest(
+                lot_id: lot.id,
+                session_id: visit.id,
+                quantity: quantity,
+                notes: notes.isEmpty ? nil : notes
+            ))
+            _ = try await APIService.shared.completeVisit(visitId: visit.id)
+            onCompleted()
+            dismiss()
+        } catch {
+            errorMessage = "Erreur : \(error.localizedDescription)"
+        }
+    }
+
+    private func skipScan() async {
+        isSubmitting = true
+        errorMessage = nil
+        defer { isSubmitting = false }
+        do {
+            _ = try await APIService.shared.completeVisit(visitId: visit.id)
+            onCompleted()
+            dismiss()
+        } catch {
+            errorMessage = "Erreur : \(error.localizedDescription)"
+        }
+    }
+}
+
+private struct LotRow: View {
+    let lot: InventoryLot
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(isSelected ? .green : .secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(lot.product_name).font(.subheadline).fontWeight(.semibold)
+                HStack(spacing: 8) {
+                    Text("Lot \(lot.lot_number)").font(.caption)
+                    Text("Exp. \(lot.expiration_date)")
+                        .font(.caption2)
+                        .foregroundStyle(colorForStatus(lot.expiration_status ?? "ok"))
+                }
+                .foregroundStyle(.secondary)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 0) {
+                Text("\(lot.quantity_remaining)")
+                    .font(.headline)
+                Text("restant\(lot.quantity_remaining > 1 ? "s" : "")")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func colorForStatus(_ s: String) -> Color {
+        switch s {
+        case "ok": return .green
+        case "warning": return .orange
+        case "critical", "expired": return .red
+        default: return .gray
+        }
+    }
+}

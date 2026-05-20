@@ -6,11 +6,11 @@ struct AppMainView: View {
 
     private let tabs: [(title: String, icon: String)] = [
         ("Accueil", "house.fill"),
-        ("Visites", "calendar"),
+        ("Sessions", "calendar"),
+        ("Clients", "person.2.fill"),
+        ("Conformité", "checkmark.shield.fill"),
         ("Stock", "cube.fill"),
         ("Factures", "doc.text.fill"),
-        ("Rapports", "chart.bar.fill"),
-        ("Patients", "person.2.fill"),
         ("Profil", "person.crop.circle.fill"),
     ]
 
@@ -20,10 +20,10 @@ struct AppMainView: View {
                 switch selectedTab {
                 case 0: HomeView()
                 case 1: VisitsListView()
-                case 2: StockView()
-                case 3: InvoicesView()
-                case 4: ReportsView()
-                case 5: PatientsView()
+                case 2: PatientsView()
+                case 3: NavigationStack { ComplianceDashboardView() }
+                case 4: InventoryListView()
+                case 5: InvoicesView()
                 case 6: ProfileView()
                 default: HomeView()
                 }

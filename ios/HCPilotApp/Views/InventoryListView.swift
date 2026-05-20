@@ -1,0 +1,187 @@
+import SwiftUI
+
+/// Liste principale d'inventaire — vue groupée par référence produit avec
+/// total quantity et statut péremption. Bouton "+ Scanner" pour ajouter un lot.
+struct InventoryListView: View {
+    @StateObject private var vm = InventoryViewModel()
+    @State private var showAddSheet = false
+    @State private var searchTerm = ""
+
+    var filtered: [InventoryProduct] {
+        guard !searchTerm.isEmpty else { return vm.products }
+        return vm.products.filter {
+            $0.product_name.localizedCaseInsensitiveContains(searchTerm)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                headerStats
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                SearchBar(text: $searchTerm)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                if vm.isLoading && vm.products.isEmpty {
+                    Spacer(); ProgressView(); Spacer()
+                } else if filtered.isEmpty {
+                    Spacer()
+                    VStack(spacing: 12) {
+                        Image(systemName: "cube.box")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
+                        Text("Aucun produit en stock")
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                } else {
+                    List(filtered) { product in
+                        NavigationLink(destination: InventoryDetailView(productName: product.product_name)) {
+                            ProductRow(product: product)
+                        }
+                    }
+                    .listStyle(.plain)
+                    .refreshable { await vm.load() }
+                }
+            }
+            .navigationTitle("Inventaire")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showAddSheet = true
+                    } label: {
+                        Label("Scanner", systemImage: "barcode.viewfinder")
+                    }
+                }
+            }
+            .sheet(isPresented: $showAddSheet) {
+                AddLotFlow(onSaved: { Task { await vm.load() } })
+            }
+            .task { await vm.load() }
+        }
+    }
+
+    private var headerStats: some View {
+        HStack(spacing: 12) {
+            StatTile(
+                title: "Références",
+                value: "\(vm.products.count)",
+                color: .blue
+            )
+            StatTile(
+                title: "Valeur stock",
+                value: String(format: "%.0f €", vm.totalValue),
+                color: .green
+            )
+            StatTile(
+                title: "Péremptions ⚠️",
+                value: "\(vm.expiringCount)",
+                color: vm.expiringCount > 0 ? .orange : .secondary
+            )
+        }
+    }
+}
+
+private struct StatTile: View {
+    let title: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.caption2).foregroundStyle(.secondary)
+            Text(value).font(.headline).foregroundStyle(color)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(Color(.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+private struct ProductRow: View {
+    let product: InventoryProduct
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(colorForStatus(product.expiration_status))
+                .frame(width: 12, height: 12)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(product.product_name)
+                    .font(.subheadline).fontWeight(.semibold)
+                HStack(spacing: 8) {
+                    Text(product.product_category.capitalized)
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color(.systemGray5))
+                        .clipShape(Capsule())
+                    Text("\(product.lot_count) lot\(product.lot_count > 1 ? "s" : "")")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text("Exp. \(product.nearest_expiration)")
+                        .font(.caption2)
+                        .foregroundStyle(colorForStatus(product.expiration_status))
+                }
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(product.total_quantity)")
+                    .font(.headline)
+                Text("unités")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private func colorForStatus(_ status: String) -> Color {
+    switch status {
+    case "ok": return .green
+    case "warning": return .orange
+    case "critical", "expired": return .red
+    default: return .gray
+    }
+}
+
+@MainActor
+final class InventoryViewModel: ObservableObject {
+    @Published var products: [InventoryProduct] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+
+    private let api = APIService.shared
+
+    var totalValue: Double {
+        products.reduce(0) { $0 + $1.total_value }
+    }
+
+    var expiringCount: Int {
+        products.filter { $0.expiration_status == "warning" || $0.expiration_status == "critical" || $0.expiration_status == "expired" }.count
+    }
+
+    func load() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            products = try await api.getInventoryProducts()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+#Preview {
+    InventoryListView()
+}

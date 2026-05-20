@@ -26,6 +26,18 @@ targets:
       - package: Alamofire
       - package: Kingfisher
 
+  HCPilotAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: HCPilotAppTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hcpilot.app.tests
+        GENERATE_INFOPLIST_FILE: "YES"
+    dependencies:
+      - target: HCPilotApp
+
 packages:
   Alamofire:
     url: https://github.com/Alamofire/Alamofire.git

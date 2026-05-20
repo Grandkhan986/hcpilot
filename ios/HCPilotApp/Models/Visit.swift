@@ -2,18 +2,22 @@ import Foundation
 
 struct Visit: Identifiable, Codable, Equatable {
     let id: String
-    let patient_id: String
-    var patient_name: String?
+    let client_id: String
+    var client_name: String?
     let service_type: String
     var status: VisitStatus
     let scheduled_at: Date
     let created_at: Date
     let address: String
+    let latitude: Double?
+    let longitude: Double?
     let notes: String?
     let total: Double
     var estimated_duration: Int?
     var copay: Double?
     var insurance_claimed: Bool?
+    var started_at: Date?
+    var completed_at: Date?
 
     enum VisitStatus: String, Codable, CaseIterable {
         case scheduled = "scheduled"
@@ -24,18 +28,22 @@ struct Visit: Identifiable, Codable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case id
-        case patient_id
-        case patient_name
+        case client_id
+        case client_name
         case service_type = "visit_type"
         case status
-        case scheduled_at = "visit_date"
+        case scheduled_at
         case created_at
         case address
+        case latitude
+        case longitude
         case notes
         case total = "total_amount"
         case estimated_duration
         case copay
         case insurance_claimed
+        case started_at
+        case completed_at
     }
 
     static func == (lhs: Visit, rhs: Visit) -> Bool {

@@ -7,11 +7,14 @@ class HomeViewModel: ObservableObject {
     @Published var monthlyRevenue = 0.0
     @Published var todayVisitsCount = 0
     @Published var upcomingVisits: [Visit] = []
-    @Published var stockItems: [StockItem] = []
+    @Published var stockItems: [LowStockProduct] = []
     @Published var lowStockCount = 0
-    @Published var currentLocation = CLLocationCoordinate2D(latitude: 48.8566, longitude: 2.3522)
     @Published var isLoading = false
     @Published var errorMessage: String?
+
+    // Mini-aperçu de l'itinéraire du jour, affiché sur l'écran d'accueil.
+    @Published var routeStops: [RouteMapStop] = []
+    @Published var polylineCoordinates: [CLLocationCoordinate2D] = []
 
     var nextActiveVisit: Visit? {
         upcomingVisits.first(where: { $0.status == .scheduled || $0.status == .in_progress })
@@ -51,11 +54,58 @@ class HomeViewModel: ObservableObject {
             upcomingVisits = dashboard.visits_today
             stockItems = dashboard.low_stock_items
 
+            await loadRouteOptimization()
+            // Reprogramme les rappels J-1 et H-2 selon les visites du jour
+            await NotificationService.shared.scheduleVisitReminders(visits: upcomingVisits)
         } catch {
             errorMessage = "Erreur lors du chargement: \(error.localizedDescription)"
         }
 
         isLoading = false
+    }
+
+    /// Calcule l'itinéraire optimisé du jour et alimente `routeStops` + `polylineCoordinates`
+    /// pour la mini-carte du Home. Silencieux en cas d'échec.
+    private func loadRouteOptimization() async {
+        let activeVisits = upcomingVisits.filter { $0.status != .cancelled }
+        let withCoords = activeVisits.compactMap { v -> (Visit, CLLocationCoordinate2D)? in
+            if let lat = v.latitude, let lng = v.longitude {
+                return (v, CLLocationCoordinate2D(latitude: lat, longitude: lng))
+            }
+            return nil
+        }
+        guard !withCoords.isEmpty else {
+            routeStops = []
+            polylineCoordinates = []
+            return
+        }
+
+        do {
+            let response = try await apiService.optimizeRoute(visits: withCoords.map { $0.0 })
+            let orderById = Dictionary(
+                uniqueKeysWithValues: response.optimized_route.map { ($0.session_id, $0.order) }
+            )
+            routeStops = withCoords.map { v, coord in
+                let order = orderById[v.id] ?? Int.max
+                let label = v.client_name ?? v.service_type.replacingOccurrences(of: "_", with: " ")
+                return RouteMapStop(
+                    id: v.id,
+                    order: order,
+                    coordinate: coord,
+                    title: label,
+                    address: v.address,
+                    status: v.status,
+                    startedAt: v.started_at,
+                    completedAt: v.completed_at
+                )
+            }.sorted { $0.order < $1.order }
+            polylineCoordinates = (response.route_geometry ?? []).compactMap { pair in
+                guard pair.count >= 2 else { return nil }
+                return CLLocationCoordinate2D(latitude: pair[1], longitude: pair[0])
+            }
+        } catch {
+            // Non-bloquant pour le Home : le bouton Commencer reste opérationnel.
+        }
     }
 
     func setUser(_ user: UserProfile?) {
@@ -84,20 +134,6 @@ class HomeViewModel: ObservableObject {
         }
     }
 
-    func optimizeRoute() {
-        guard !upcomingVisits.isEmpty else {
-            errorMessage = "Aucune visite à optimiser"
-            return
-        }
-        Task {
-            do {
-                _ = try await apiService.optimizeRoute(visits: upcomingVisits)
-                errorMessage = nil
-            } catch {
-                errorMessage = "Erreur d'optimisation: \(error.localizedDescription)"
-            }
-        }
-    }
 }
 
 // MARK: - Composants UI réutilisables
@@ -145,7 +181,7 @@ struct VisitListItem: View {
                 )
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(visit.patient_name ?? "Patient")
+                Text(visit.client_name ?? "Client")
                     .font(.subheadline)
                     .fontWeight(.semibold)
 
@@ -202,12 +238,12 @@ struct VisitListItem: View {
 }
 
 struct StockStatusCard: View {
-    let item: StockItem
+    let item: LowStockProduct
 
     var body: some View {
         VStack(alignment: .center, spacing: 8) {
             Circle()
-                .fill(item.isLowStock ? Color.red : Color.blue)
+                .fill(Color.red)
                 .frame(width: 36, height: 36)
                 .overlay(
                     Image(systemName: "cube")
@@ -215,20 +251,18 @@ struct StockStatusCard: View {
                         .font(.caption2)
                 )
 
-            Text(item.name)
+            Text(item.product_name)
                 .font(.caption2)
                 .lineLimit(1)
                 .truncationMode(.tail)
 
-            Text("\(item.quantity)")
+            Text("\(item.total_quantity)")
                 .font(.caption)
                 .fontWeight(.semibold)
 
-            if item.isLowStock {
-                Text("Faible")
-                    .font(.caption2)
-                    .foregroundColor(.red)
-            }
+            Text("Faible")
+                .font(.caption2)
+                .foregroundColor(.red)
         }
         .frame(width: 80)
     }

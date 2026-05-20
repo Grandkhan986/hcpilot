@@ -60,16 +60,29 @@ class APIService {
         return e
     }()
 
-    private init() {}
+    private init() {
+        // Restaure le token depuis le Keychain au boot (session persistante
+        // sauf si expirée par inactivité — l'AuthViewModel s'en charge).
+        self.authToken = SecureStorage.shared.getString(forKey: .authToken)
+    }
 
     // MARK: - Auth Token Management
 
     func setToken(_ token: String) {
         authToken = token
+        SecureStorage.shared.setString(token, forKey: .authToken)
+        SecureStorage.shared.setDate(Date(), forKey: .lastActivity)
     }
 
     func clearToken() {
         authToken = nil
+        SecureStorage.shared.clearSession()
+    }
+
+    /// Met à jour le timestamp d'activité — appelé à chaque requête HTTP.
+    /// Permet à l'AuthViewModel de juger si la session doit être verrouillée.
+    private func touchActivity() {
+        SecureStorage.shared.setDate(Date(), forKey: .lastActivity)
     }
 
     // MARK: - Generic Requests
@@ -78,6 +91,7 @@ class APIService {
         guard let url = URL(string: baseURL + endpoint) else {
             throw APIError.invalidURL(endpoint)
         }
+        if authToken != nil { touchActivity() }
         let data = try await AF.request(url, headers: headers)
             .validate()
             .serializingData()
@@ -85,10 +99,49 @@ class APIService {
         return try decoder.decode(T.self, from: data)
     }
 
+    /// GET avec cache de secours offline (brief §Gestion offline).
+    /// Comportement :
+    ///   1. Tente l'appel réseau ; sur succès, persiste la réponse + marque online.
+    ///   2. Sur échec réseau, retombe sur la dernière réponse cachée et marque
+    ///      l'app comme étant en mode offline avec un horodatage de fraîcheur.
+    ///   3. Si pas de cache, propage l'erreur.
+    private func cachedGet<T: Decodable>(_ endpoint: String) async throws -> T {
+        guard let url = URL(string: baseURL + endpoint) else {
+            throw APIError.invalidURL(endpoint)
+        }
+        if authToken != nil { touchActivity() }
+        do {
+            let data = try await AF.request(url, headers: headers)
+                .validate()
+                .serializingData()
+                .value
+            OfflineCache.shared.save(data, for: endpoint)
+            let wasOffline = await MainActor.run { () -> Bool in
+                let prev = ConnectivityState.shared.isOffline
+                ConnectivityState.shared.markOnline()
+                return prev
+            }
+            // Connexion qui vient de revenir → drainer les mutations en attente
+            if wasOffline {
+                Task { await MutationQueue.shared.drain(via: self) }
+            }
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            if let cached = OfflineCache.shared.load(for: endpoint) {
+                await MainActor.run {
+                    ConnectivityState.shared.markOffline(cachedAt: cached.savedAt)
+                }
+                return try decoder.decode(T.self, from: cached.data)
+            }
+            throw error
+        }
+    }
+
     private func post<T: Decodable>(_ endpoint: String, body: Encodable) async throws -> T {
         guard let url = URL(string: baseURL + endpoint) else {
             throw APIError.invalidURL(endpoint)
         }
+        if authToken != nil { touchActivity() }
         let jsonData = try encoder.encode(AnyEncodable(body))
         var request = URLRequest(url: url)
         request.method = .post
@@ -106,6 +159,7 @@ class APIService {
         guard let url = URL(string: baseURL + endpoint) else {
             throw APIError.invalidURL(endpoint)
         }
+        if authToken != nil { touchActivity() }
         let data = try await AF.request(url, method: .post, headers: headers)
             .validate()
             .serializingData()
@@ -116,10 +170,124 @@ class APIService {
         return json
     }
 
+    // MARK: - Offline mutations (brief §Gestion offline)
+
+    enum MutationReplayError: Error {
+        case networkUnavailable
+        case permanentFailure
+    }
+
+    /// Erreur lancée quand une mutation est mise en queue offline. Le call site
+    /// peut traiter ça comme un quasi-succès (l'action sera rejouée plus tard).
+    enum QueuedError: Error {
+        case enqueued
+    }
+
+    private func isNetworkError(_ error: Error) -> Bool {
+        if let afError = error as? AFError {
+            switch afError {
+            case .sessionTaskFailed: return true
+            case .invalidURL, .createUploadableFailed, .createURLRequestFailed: return false
+            default: return false
+            }
+        }
+        let nsError = error as NSError
+        return nsError.domain == NSURLErrorDomain
+    }
+
+    /// POST sans body (action) avec mise en queue offline. Renvoie le JSON
+    /// sur succès, ou lance `QueuedError.enqueued` si la mutation a été
+    /// mise en file (offline).
+    func queuedPostAction(_ endpoint: String) async throws -> [String: Any] {
+        do {
+            let result = try await postAction(endpoint)
+            // Tente de drainer d'éventuelles mutations en attente (la connectivité
+            // vient peut-être de revenir).
+            Task { await MutationQueue.shared.drain(via: self) }
+            return result
+        } catch {
+            if isNetworkError(error) {
+                await MainActor.run {
+                    MutationQueue.shared.enqueue(endpoint: endpoint, method: "POST", body: nil)
+                    ConnectivityState.shared.markOffline(cachedAt: Date())
+                }
+                throw QueuedError.enqueued
+            }
+            throw error
+        }
+    }
+
+    /// DELETE avec mise en queue offline.
+    func queuedDelete(_ endpoint: String) async throws {
+        do {
+            try await delete(endpoint)
+            Task { await MutationQueue.shared.drain(via: self) }
+        } catch {
+            if isNetworkError(error) {
+                await MainActor.run {
+                    MutationQueue.shared.enqueue(endpoint: endpoint, method: "DELETE", body: nil)
+                    ConnectivityState.shared.markOffline(cachedAt: Date())
+                }
+                throw QueuedError.enqueued
+            }
+            throw error
+        }
+    }
+
+    /// POST avec body (typé) + mise en queue offline. Renvoie le résultat typé
+    /// sur succès, ou lance `QueuedError.enqueued` si offline.
+    func queuedPost<T: Decodable>(_ endpoint: String, body: Encodable) async throws -> T {
+        do {
+            let result: T = try await post(endpoint, body: body)
+            Task { await MutationQueue.shared.drain(via: self) }
+            return result
+        } catch {
+            if isNetworkError(error) {
+                let jsonData = (try? encoder.encode(AnyEncodable(body))) ?? Data()
+                await MainActor.run {
+                    MutationQueue.shared.enqueue(endpoint: endpoint, method: "POST", body: jsonData)
+                    ConnectivityState.shared.markOffline(cachedAt: Date())
+                }
+                throw QueuedError.enqueued
+            }
+            throw error
+        }
+    }
+
+    /// Rejoue une mutation depuis la file. Distingue les erreurs réseau
+    /// (toujours offline, garder en file) des erreurs serveur (drop).
+    func replay(mutation: PendingMutation) async throws {
+        guard let url = URL(string: baseURL + mutation.endpoint) else {
+            throw MutationReplayError.permanentFailure
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = mutation.method
+        request.allHTTPHeaderFields = headers.dictionary
+        if let body = mutation.body, !body.isEmpty {
+            request.httpBody = body
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        do {
+            _ = try await AF.request(request)
+                .validate()
+                .serializingData()
+                .value
+            // Succès → mark online (la connectivité est revenue)
+            await MainActor.run { ConnectivityState.shared.markOnline() }
+        } catch {
+            if isNetworkError(error) {
+                throw MutationReplayError.networkUnavailable
+            }
+            // 4xx/5xx → mutation périmée, on drop (last-write-wins per brief)
+            throw MutationReplayError.permanentFailure
+        }
+    }
+
     private func put<T: Decodable>(_ endpoint: String, body: Encodable) async throws -> T {
         guard let url = URL(string: baseURL + endpoint) else {
             throw APIError.invalidURL(endpoint)
         }
+        if authToken != nil { touchActivity() }
         let jsonData = try encoder.encode(AnyEncodable(body))
         var request = URLRequest(url: url)
         request.method = .put
@@ -137,10 +305,23 @@ class APIService {
         guard let url = URL(string: baseURL + endpoint) else {
             throw APIError.invalidURL(endpoint)
         }
+        if authToken != nil { touchActivity() }
         _ = try await AF.request(url, method: .delete, headers: headers)
             .validate()
             .serializingData()
             .value
+    }
+
+    private func deleteReturning<T: Decodable>(_ endpoint: String) async throws -> T {
+        guard let url = URL(string: baseURL + endpoint) else {
+            throw APIError.invalidURL(endpoint)
+        }
+        if authToken != nil { touchActivity() }
+        let data = try await AF.request(url, method: .delete, headers: headers)
+            .validate()
+            .serializingData()
+            .value
+        return try decoder.decode(T.self, from: data)
     }
 
     // MARK: - Auth
@@ -161,51 +342,138 @@ class APIService {
     // MARK: - Visits
 
     func getVisits() async throws -> [Visit] {
-        return try await get("/visits")
+        return try await cachedGet("/sessions")
     }
 
     func createVisit(visit: Visit) async throws -> Visit {
-        return try await post("/visits", body: visit)
+        return try await post("/sessions", body: visit)
     }
 
     func updateVisit(visit: Visit) async throws -> Visit {
-        return try await put("/visits/\(visit.id)", body: visit)
+        return try await put("/sessions/\(visit.id)", body: visit)
     }
 
+    /// Patch partiel d'une visite (PATCH-like).
+    struct VisitPatch: Encodable {
+        var visit_type: String?
+        var visit_date: Date?
+        var address: String?
+        var latitude: Double?
+        var longitude: Double?
+        var notes: String?
+        var estimated_duration: Int?
+        var total_amount: Double?
+    }
+
+    func updateVisit(id: String, patch: VisitPatch) async throws -> Visit {
+        return try await put("/sessions/\(id)", body: patch)
+    }
+
+    /// Soft-delete: marque la visite comme annulée (status=cancelled).
+    /// Offline-safe : mise en queue si le réseau tombe.
+    func deleteVisit(id: String) async throws {
+        try await queuedDelete("/sessions/\(id)")
+    }
+
+    /// Clock-in. Offline-safe : si le réseau tombe, la mutation est mise en queue
+    /// et rejouée au retour de connectivité.
     func startVisit(visitId: String) async throws -> [String: Any] {
-        return try await postAction("/visits/\(visitId)/start")
+        return try await queuedPostAction("/sessions/\(visitId)/start")
     }
 
+    /// Clock-out. Offline-safe (idem startVisit).
     func completeVisit(visitId: String) async throws -> [String: Any] {
-        return try await postAction("/visits/\(visitId)/complete")
+        return try await queuedPostAction("/sessions/\(visitId)/complete")
     }
 
     // MARK: - Patients
 
-    func getPatients() async throws -> [Patient] {
-        return try await get("/patients")
+    func getPatients(archived: Bool = false) async throws -> [Patient] {
+        return try await cachedGet("/clients?archived=\(archived)")
     }
 
     func createPatient(patient: Patient) async throws -> Patient {
-        return try await post("/patients", body: patient)
+        return try await post("/clients", body: patient)
     }
 
-    // MARK: - Stock
-
-    func getStock() async throws -> [StockItem] {
-        return try await get("/stock")
+    /// Patch envoyé sur PUT /patients/{id}. Tous champs Optional :
+    /// - nil  → champ non touché côté backend (filtré)
+    /// - ""   → champ vidé
+    struct PatientPatch: Encodable {
+        var first_name: String?
+        var last_name: String?
+        var email: String?
+        var phone: String?
+        var date_of_birth: String?
+        var gender: String?
+        var address: String?
+        var medical_history: String?
+        var allergies: String?
     }
 
-    func addStockItem(item: StockItem) async throws -> StockItem {
-        return try await post("/stock", body: item)
+    /// Réponse de PUT /patients/{id} : patient mis à jour + nb visites futures
+    /// resync'ées suite à un changement d'adresse.
+    struct UpdatedPatientResponse: Decodable {
+        let id: String
+        let first_name: String
+        let last_name: String
+        let address: String?
+        let latitude: Double?
+        let longitude: Double?
+        let archived_at: String?
+        let synced_future_visits: Int?
     }
 
-    func updateStock(item: StockItem) async throws -> StockItem {
-        return try await put("/stock/\(item.id)", body: item)
+    func updatePatient(id: String, patch: PatientPatch) async throws -> UpdatedPatientResponse {
+        return try await put("/clients/\(id)", body: patch)
     }
 
-    func deleteStock(itemId: String) async throws {
-        try await delete("/stock/\(itemId)")
+    /// Soft-delete : archive le patient.
+    /// Renvoie le nombre de visites planifiées supprimées.
+    struct ArchivePatientResponse: Decodable {
+        let message: String
+        let client_id: String
+        let deleted_scheduled_visits: Int
+    }
+
+    func archivePatient(id: String) async throws -> ArchivePatientResponse {
+        return try await deleteReturning("/clients/\(id)")
+    }
+
+    func restorePatient(id: String) async throws {
+        _ = try await postAction("/clients/\(id)/restore")
+    }
+
+    // MARK: - Inventory (lots-tracked)
+
+    func getInventoryLots(includeDepleted: Bool = false) async throws -> [InventoryLot] {
+        return try await cachedGet("/inventory/lots?include_depleted=\(includeDepleted)")
+    }
+
+    func getInventoryProducts() async throws -> [InventoryProduct] {
+        return try await cachedGet("/inventory/products")
+    }
+
+    func getInventoryLot(id: String) async throws -> InventoryLot {
+        return try await get("/inventory/lots/\(id)")
+    }
+
+    func createInventoryLot(_ payload: CreateLotRequest) async throws -> InventoryLot {
+        return try await post("/inventory/lots", body: payload)
+    }
+
+    func findLotsByBarcode(_ barcode: String) async throws -> [InventoryLot] {
+        return try await get("/inventory/by_barcode/\(barcode)")
+    }
+
+    /// Décrément de stock. Offline-safe : mise en queue si réseau indispo
+    /// (la nurse peut consommer un lot en mode hors-ligne, sync au retour).
+    func recordUsage(_ payload: RecordUsageRequest) async throws -> RecordUsageResponse {
+        return try await queuedPost("/inventory/usage", body: payload)
+    }
+
+    func getLotTransactions(lotId: String) async throws -> [InventoryTransaction] {
+        return try await get("/inventory/lots/\(lotId)/transactions")
     }
 
     // MARK: - Invoices
@@ -227,11 +495,11 @@ class APIService {
         let low_stock_alerts: Int
         let monthly_revenue: Double
         let visits_today: [Visit]
-        let low_stock_items: [StockItem]
+        let low_stock_items: [LowStockProduct]
     }
 
     func getDashboard() async throws -> DashboardResponse {
-        return try await get("/reports/dashboard")
+        return try await cachedGet("/reports/dashboard")
     }
 
     struct RevenueResponse: Decodable {
@@ -245,26 +513,123 @@ class APIService {
         return try await get("/reports/revenue?start_date=\(startDate)&end_date=\(endDate)")
     }
 
-    // MARK: - Route Optimization
+    // MARK: - Compliance
 
-    func optimizeRoute(visits: [Visit]) async throws -> [String: Any] {
-        guard let url = URL(string: baseURL + "/optimize/routes") else {
-            throw APIError.invalidURL("/optimize/routes")
-        }
-        let jsonData = try encoder.encode(visits)
-        var request = URLRequest(url: url)
-        request.method = .post
-        request.headers = headers
-        request.httpBody = jsonData
+    func getComplianceDashboard() async throws -> ComplianceDashboard {
+        return try await cachedGet("/compliance/dashboard")
+    }
 
-        let data = try await AF.request(request)
-            .validate()
-            .serializingData()
-            .value
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+    func getStandingOrders() async throws -> [StandingOrderInfo] {
+        return try await cachedGet("/compliance/standing_orders")
+    }
+
+    func acknowledgeAlert(id: String) async throws {
+        _ = try await postAction("/compliance/alerts/\(id)/acknowledge")
+    }
+
+    // MARK: - Onboarding (wizard Sprint 1)
+
+    struct UpdatePracticeRequest: Encodable {
+        var first_name: String?
+        var last_name: String?
+        var phone: String?
+        var state_code: String?
+        var license_number: String?
+        var license_expiration_date: String?
+        var license_type: String?
+        var practice_name: String?
+        var npi_number: String?
+    }
+
+    struct PracticeResponse: Decodable {
+        let user_id: String
+        let state_code: String?
+        let license_number: String?
+        let license_expiration_date: String?
+        let license_type: String?
+        let practice_name: String?
+        let npi_number: String?
+    }
+
+    func updatePractice(_ payload: UpdatePracticeRequest) async throws -> PracticeResponse {
+        return try await put("/users/me/practice", body: payload)
+    }
+
+    struct CreateMedicalDirectorRequest: Encodable {
+        let first_name: String
+        let last_name: String
+        let email: String
+        let license_number: String
+        let state_code: String
+        let contract_start_date: String
+        let contract_end_date: String?
+        let audit_frequency_days: Int
+        let next_audit_date: String?
+    }
+
+    func createMedicalDirector(_ payload: CreateMedicalDirectorRequest) async throws -> MedicalDirectorInfo {
+        return try await post("/compliance/medical_directors", body: payload)
+    }
+
+    struct CreateStandingOrderRequest: Encodable {
+        let formulation_name: String
+        let medical_director_id: String?
+        let expires_at: String?
+    }
+
+    func createStandingOrder(_ payload: CreateStandingOrderRequest) async throws -> StandingOrderInfo {
+        return try await post("/compliance/standing_orders", body: payload)
+    }
+
+    // MARK: - Audit Logs
+
+    func getAuditLogs(entityType: String? = nil, limit: Int = 100) async throws -> [AuditLogEntry] {
+        var path = "/audit_logs?limit=\(limit)"
+        if let t = entityType { path += "&entity_type=\(t)" }
+        return try await get(path)
+    }
+
+    // MARK: - Consents
+
+    func createConsent(_ payload: CreateConsentRequest) async throws -> ConsentSummary {
+        return try await post("/consents", body: payload)
+    }
+
+    func getConsent(forVisit visitId: String) async throws -> ConsentSummary {
+        return try await get("/sessions/\(visitId)/consent")
+    }
+
+    /// Renvoie le PDF base64 du consentement.
+    struct ConsentPDFResponse: Decodable {
+        let pdf_b64: String
+    }
+
+    func getConsentPDF(consentId: String) async throws -> Data {
+        let resp: ConsentPDFResponse = try await get("/consents/\(consentId)/pdf")
+        guard let data = Data(base64Encoded: resp.pdf_b64) else {
             throw APIError.invalidResponse
         }
-        return json
+        return data
+    }
+
+    // MARK: - Route Optimization
+
+    struct OptimizedStop: Decodable {
+        let session_id: String
+        let order: Int
+    }
+
+    struct OptimizedRouteResponse: Decodable {
+        let optimized_route: [OptimizedStop]
+        /// Polyline points as [longitude, latitude] pairs (GeoJSON LineString order).
+        let route_geometry: [[Double]]?
+        let total_distance_m: Double
+        let total_duration_s: Double
+        let warning: String?
+    }
+
+    func optimizeRoute(visits: [Visit]) async throws -> OptimizedRouteResponse {
+        return try await post("/optimize/routes", body: visits)
     }
 }
 

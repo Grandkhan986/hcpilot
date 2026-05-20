@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
+    @State private var showSetupWizard = false
 
     var body: some View {
         NavigationView {
@@ -32,7 +33,9 @@ struct ProfileView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         ProfileMenuItem(icon: "person.crop.circle", title: "Mon profil")
                         ProfileMenuItem(icon: "envelope", title: "Messages")
-                        ProfileMenuItem(icon: "bell", title: "Notifications")
+                        NavigationLink(destination: NotificationsView()) {
+                            ProfileMenuRow(icon: "bell", title: "Notifications")
+                        }
 
                         Divider().padding(.vertical, 8)
 
@@ -42,8 +45,42 @@ struct ProfileView: View {
 
                         Divider().padding(.vertical, 8)
 
+                        Button { showSetupWizard = true } label: {
+                            ProfileMenuRow(icon: "checkmark.shield", title: "Configuration de la pratique")
+                        }
+                        NavigationLink(destination: AuditLogView()) {
+                            ProfileMenuRow(icon: "lock.doc", title: "Journal d'audit (HIPAA)")
+                        }
+                        NavigationLink(destination: SecuritySettingsView()) {
+                            ProfileMenuRow(icon: "lock.shield.fill", title: "Sécurité")
+                        }
+                        NavigationLink(destination: MutationQueueView()) {
+                            HStack {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .foregroundColor(.primary)
+                                    .frame(width: 24)
+                                Text("File de synchronisation")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                if MutationQueue.shared.count > 0 {
+                                    Text("\(MutationQueue.shared.count)")
+                                        .font(.caption2).fontWeight(.semibold)
+                                        .padding(.horizontal, 6).padding(.vertical, 2)
+                                        .background(Color.orange)
+                                        .foregroundStyle(.white)
+                                        .clipShape(Capsule())
+                                }
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                            .padding(.horizontal)
+                            .padding(.vertical, 12)
+                        }
                         ProfileMenuItem(icon: "gear", title: "Paramètres")
-                        ProfileMenuItem(icon: "info.circle", title: "À propos")
+                        NavigationLink(destination: LegalDocsView()) {
+                            ProfileMenuRow(icon: "doc.text.below.ecg", title: "Mentions légales & HIPAA")
+                        }
                     }
                     .padding(.top, 24)
 
@@ -68,6 +105,9 @@ struct ProfileView: View {
             }
             .navigationTitle("Profil")
             .navigationBarTitleDisplayMode(.large)
+            .sheet(isPresented: $showSetupWizard) {
+                SetupWizardView(onCompleted: {})
+            }
         }
     }
 }
@@ -78,20 +118,30 @@ struct ProfileMenuItem: View {
 
     var body: some View {
         Button(action: {}) {
-            HStack {
-                Image(systemName: icon)
-                    .foregroundColor(.primary)
-                    .frame(width: 24)
-                Text(title)
-                    .foregroundColor(.primary)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 12)
+            ProfileMenuRow(icon: icon, title: title)
         }
+    }
+}
+
+/// Ligne d'item réutilisable (pour Button comme pour NavigationLink).
+struct ProfileMenuRow: View {
+    let icon: String
+    let title: String
+
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(.primary)
+                .frame(width: 24)
+            Text(title)
+                .foregroundColor(.primary)
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.gray)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 12)
     }
 }
 

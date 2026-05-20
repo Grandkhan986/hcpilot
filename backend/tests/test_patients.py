@@ -24,7 +24,7 @@ def create_test_token() -> str:
 async def test_list_patients_authenticated(client: AsyncClient):
     token = create_test_token()
     response = await client.get(
-        "/patients",
+        "/clients",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200

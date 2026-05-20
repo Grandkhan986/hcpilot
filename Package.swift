@@ -4,8 +4,7 @@ import PackageDescription
 let package = Package(
     name: "HCPilot",
     platforms: [
-        .iOS(.v15),
-        .macOS(.v12)
+        .iOS(.v15)
     ],
     products: [
         .library(name: "HCPilot", targets: ["HCPilotApp"])
