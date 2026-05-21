@@ -1,8 +1,7 @@
 import Foundation
 
-/// Une case à cocher du consentement éclairé. L'`id` est un UUID stable
-/// distinct du `label` (audit H8 : éviter les collisions si deux labels
-/// identiques co-existent).
+/// Une case à cocher du consentement éclairé.
+/// `id` UUID distinct du `label` (audit H8).
 struct ConsentCheckpoint: Codable, Hashable, Identifiable {
     let id: String
     let label: String
@@ -15,32 +14,32 @@ struct ConsentCheckpoint: Codable, Hashable, Identifiable {
     }
 }
 
-/// Métadonnées d'un consentement signé (sans le blob signature/PDF).
-/// Brief schema `consents` — toutes les dates sont en Date (audit H1).
+/// Métadonnées d'un consentement signé. Brief `consents`.
+/// camelCase Swift / snake_case JSON via APIService global strategy.
 struct ConsentSummary: Identifiable, Codable {
     let id: String
-    let session_id: String
-    let client_id: String
-    let nurse_id: String
-    let standing_order_id: String?
-    let formulation_name: String
+    let sessionId: String
+    let clientId: String
+    let nurseId: String
+    let standingOrderId: String?
+    let formulationName: String
     let checkpoints: [ConsentCheckpoint]
-    let signed_at: Date
-    let signed_latitude: Double?
-    let signed_longitude: Double?
-    let ip_address: String?
-    let device_info: [String: String]?
-    let has_pdf: Bool
-    let created_at: Date
+    let signedAt: Date
+    let signedLatitude: Double?
+    let signedLongitude: Double?
+    let ipAddress: String?
+    let deviceInfo: [String: String]?
+    let hasPdf: Bool
+    let createdAt: Date
 }
 
 struct CreateConsentRequest: Encodable {
-    let session_id: String
-    let standing_order_id: String
+    let sessionId: String
+    let standingOrderId: String
     let checkpoints: [ConsentCheckpoint]
-    let signature_image_b64: String
-    let pdf_b64: String?
-    let signed_latitude: Double?
-    let signed_longitude: Double?
-    let device_info: [String: String]?
+    let signatureImageB64: String
+    let pdfB64: String?
+    let signedLatitude: Double?
+    let signedLongitude: Double?
+    let deviceInfo: [String: String]?
 }

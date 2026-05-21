@@ -93,7 +93,7 @@ private struct FormulationStep: View {
                         ForEach(vm.standingOrders) { so in
                             Button {
                                 vm.selectedStandingOrder = so
-                                vm.consentText = so.consent_text ?? ""
+                                vm.consentText = so.consentText ?? ""
                                 vm.step = 1
                             } label: {
                                 StandingOrderCard(
@@ -120,17 +120,17 @@ private struct StandingOrderCard: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text(standingOrder.formulation_name).font(.headline)
+                Text(standingOrder.formulationName).font(.headline)
                 HStack(spacing: 6) {
-                    Text(standingOrder.formulation_category.capitalized)
+                    Text(standingOrder.formulationCategory.capitalized)
                         .font(.caption2)
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Color(.systemGray5))
                         .clipShape(Capsule())
-                    if let exp = standingOrder.expires_at {
+                    if let exp = standingOrder.expiresAt {
                         Text("Exp. \(exp, style: .date)")
                             .font(.caption2)
-                            .foregroundStyle(colorFor(standingOrder.expiration_status ?? .ok))
+                            .foregroundStyle(colorFor(standingOrder.expirationStatus ?? .ok))
                     }
                 }
             }
@@ -157,7 +157,7 @@ private struct ConsentTextStep: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(vm.selectedStandingOrder?.formulation_name ?? "—")
+            Text(vm.selectedStandingOrder?.formulationName ?? "—")
                 .font(.headline)
                 .padding(.horizontal)
 
@@ -355,7 +355,7 @@ final class ConsentFlowViewModel: ObservableObject {
             // statique) : la signature du consentement référence ainsi une vraie
             // autorisation réglementaire.
             let all = try await api.getStandingOrders()
-            standingOrders = all.filter { $0.is_active }
+            standingOrders = all.filter { $0.isActive }
         } catch {
             errorMessage = "Impossible de charger les standing orders : \(error.localizedDescription)"
         }
@@ -404,7 +404,7 @@ final class ConsentFlowViewModel: ObservableObject {
             documentId: UUID().uuidString,
             nurseName: nurseName,
             clientName: clientName,
-            formulationName: standingOrder.formulation_name,
+            formulationName: standingOrder.formulationName,
             consentText: consentText,
             checkpoints: checkpoints,
             signatureImage: signatureUIImage,
@@ -417,14 +417,14 @@ final class ConsentFlowViewModel: ObservableObject {
         let pdfB64 = pdfData.base64EncodedString()
 
         let body = CreateConsentRequest(
-            session_id: session.id,
-            standing_order_id: standingOrder.id,
+            sessionId: session.id,
+            standingOrderId: standingOrder.id,
             checkpoints: checkpoints,
-            signature_image_b64: signatureB64,
-            pdf_b64: pdfB64,
-            signed_latitude: coord?.latitude,
-            signed_longitude: coord?.longitude,
-            device_info: deviceInfo
+            signatureImageB64: signatureB64,
+            pdfB64: pdfB64,
+            signedLatitude: coord?.latitude,
+            signedLongitude: coord?.longitude,
+            deviceInfo: deviceInfo
         )
 
         do {

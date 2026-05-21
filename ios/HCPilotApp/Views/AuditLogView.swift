@@ -75,19 +75,19 @@ private struct AuditRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: iconForEntity(entry.entity_type))
+            Image(systemName: iconForEntity(entry.entityType))
                 .foregroundStyle(colorForAction(entry.action))
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(labelForEntity(entry.entity_type))
+                    Text(labelForEntity(entry.entityType))
                         .font(.subheadline).fontWeight(.semibold)
                     Text("·").foregroundStyle(.secondary)
                     Text(labelForAction(entry.action))
                         .font(.caption)
                         .foregroundStyle(colorForAction(entry.action))
                 }
-                Text(entry.entity_id)
+                Text(entry.entityId)
                     .font(.system(.caption2, design: .monospaced))
                     .foregroundStyle(.secondary)
                 if let changes = entry.changes {
@@ -97,9 +97,9 @@ private struct AuditRow: View {
                         .lineLimit(2)
                 }
                 HStack(spacing: 8) {
-                    Text(entry.occurred_at, formatter: Self.timeFormatter)
+                    Text(entry.occurredAt, formatter: Self.timeFormatter)
                         .font(.caption2).foregroundStyle(.secondary)
-                    if let ip = entry.ip_address {
+                    if let ip = entry.ipAddress {
                         Text("IP: \(ip)")
                             .font(.system(.caption2, design: .monospaced))
                             .foregroundStyle(.secondary)
@@ -115,11 +115,11 @@ private struct AuditRow: View {
         case .consents: return "Consentement"
         case .clients: return "Client"
         case .sessions: return "Session"
-        case .inventory_transactions: return "Stock (mvt)"
-        case .inventory_lots: return "Stock (lot)"
-        case .standing_orders: return "Standing order"
-        case .medical_directors: return "Medical Director"
-        case .compliance_alerts: return "Alerte"
+        case .inventoryTransactions: return "Stock (mvt)"
+        case .inventoryLots: return "Stock (lot)"
+        case .standingOrders: return "Standing order"
+        case .medicalDirectors: return "Medical Director"
+        case .complianceAlerts: return "Alerte"
         case .users: return "Profil"
         case .unknown: return "—"
         }
@@ -130,10 +130,10 @@ private struct AuditRow: View {
         case .consents: return "doc.text.fill"
         case .clients: return "person.fill"
         case .sessions: return "calendar"
-        case .inventory_transactions, .inventory_lots: return "cube.fill"
-        case .standing_orders: return "doc.append"
-        case .medical_directors: return "stethoscope"
-        case .compliance_alerts: return "bell.fill"
+        case .inventoryTransactions, .inventoryLots: return "cube.fill"
+        case .standingOrders: return "doc.append"
+        case .medicalDirectors: return "stethoscope"
+        case .complianceAlerts: return "bell.fill"
         case .users: return "person.crop.circle"
         case .unknown: return "questionmark.circle"
         }

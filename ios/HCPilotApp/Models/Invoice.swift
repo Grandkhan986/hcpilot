@@ -1,31 +1,33 @@
 import Foundation
 
+/// Facture liée à une session. Brief : private pay via Stripe Connect Express
+/// (commission 0,99 $). camelCase Swift / snake_case JSON via APIService.
 struct Invoice: Identifiable, Hashable, Codable {
     let id: String
-    let client_id: String
-    var client_name: String?
-    let session_id: String?
-    let invoice_number: String
+    let clientId: String
+    var clientName: String?
+    let sessionId: String?
+    let invoiceNumber: String
     let status: InvoiceStatus
     let subtotal: Double?
     let tax: Double?
     let discount: Double?
     let total: Double
     let items: [InvoiceItem]?
-    let due_date: Date
-    let paid_at: Date?
-    let stripe_payment_intent_id: String?
-    let created_at: Date
-    let updated_at: Date?
+    let dueDate: Date
+    let paidAt: Date?
+    let stripePaymentIntentId: String?
+    let createdAt: Date
+    let updatedAt: Date?
 
     enum InvoiceStatus: String, CaseIterable, Codable {
-        case draft = "draft"
-        case sent = "sent"
-        case paid = "paid"
-        case overdue = "overdue"
-        case refunded = "refunded"
-        case partial_refund = "partial_refund"
-        case cancelled = "cancelled"
+        case draft
+        case sent
+        case paid
+        case overdue
+        case refunded
+        case partialRefund = "partial_refund"
+        case cancelled
     }
 
     static func == (lhs: Invoice, rhs: Invoice) -> Bool {
@@ -42,10 +44,4 @@ struct InvoiceItem: Identifiable, Hashable, Codable {
     let description: String
     let quantity: Int
     let price: Double
-
-    enum CodingKeys: String, CodingKey {
-        case description
-        case quantity
-        case price
-    }
 }

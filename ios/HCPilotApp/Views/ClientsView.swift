@@ -107,7 +107,7 @@ struct ClientListItem: View {
                 )
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(client.full_name)
+                Text(client.fullName)
                     .font(.headline)
                     .foregroundStyle(client.isArchived ? .secondary : .primary)
                 if let phone = client.phone {
@@ -157,8 +157,8 @@ struct ClientDetailView: View {
 
                 contactCard
 
-                if !client.medical_conditions.isEmpty {
-                    medicalCard(history: client.medical_conditions.joined(separator: ", "))
+                if !client.medicalConditions.isEmpty {
+                    medicalCard(history: client.medicalConditions.joined(separator: ", "))
                 }
 
                 if !client.allergies.isEmpty {
@@ -228,10 +228,10 @@ struct ClientDetailView: View {
                         .fontWeight(.bold)
                 )
             VStack(alignment: .leading, spacing: 4) {
-                Text(client.full_name)
+                Text(client.fullName)
                     .font(.title2)
                     .fontWeight(.bold)
-                if let gender = client.gender, let dob = client.date_of_birth {
+                if let gender = client.gender, let dob = client.dateOfBirth {
                     Text("\(gender == "M" ? "Homme" : "Femme") · \(dob)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
@@ -246,7 +246,7 @@ struct ClientDetailView: View {
             Image(systemName: "archivebox.fill")
             Text("Client archivé")
                 .fontWeight(.semibold)
-            if let date = client.archived_at {
+            if let date = client.archivedAt {
                 Text("le \(date, style: .date)")
             }
             Spacer()
@@ -265,14 +265,14 @@ struct ClientDetailView: View {
             if let email = client.email {
                 InfoRow(icon: "envelope", label: "Email", value: email)
             }
-            if !client.full_address.isEmpty {
-                InfoRow(icon: "location", label: "Adresse", value: client.full_address)
+            if !client.fullAddress.isEmpty {
+                InfoRow(icon: "location", label: "Adresse", value: client.fullAddress)
             }
-            if let access = client.access_notes, !access.isEmpty {
+            if let access = client.accessNotes, !access.isEmpty {
                 InfoRow(icon: "key", label: "Accès", value: access)
             }
-            if let name = client.emergency_contact_name, !name.isEmpty {
-                let phone = client.emergency_contact_phone ?? ""
+            if let name = client.emergencyContactName, !name.isEmpty {
+                let phone = client.emergencyContactPhone ?? ""
                 InfoRow(icon: "exclamationmark.bubble", label: "Contact urgence", value: "\(name) \(phone)".trimmingCharacters(in: .whitespaces))
             }
         }
@@ -327,9 +327,9 @@ struct ClientDetailView: View {
         do {
             let r = try await APIService.shared.archiveClient(id: client.id)
             onChanged()
-            if r.deleted_scheduled_sessions > 0 {
-                let s = r.deleted_scheduled_sessions > 1 ? "s" : ""
-                actionInfo = "\(r.deleted_scheduled_sessions) session\(s) planifiée\(s) supprimée\(s)."
+            if r.deletedScheduledSessions > 0 {
+                let s = r.deletedScheduledSessions > 1 ? "s" : ""
+                actionInfo = "\(r.deletedScheduledSessions) session\(s) planifiée\(s) supprimée\(s)."
                 try? await Task.sleep(nanoseconds: 900_000_000)
             }
             dismiss()
@@ -380,7 +380,7 @@ class ClientsViewModel: ObservableObject {
     var filteredClients: [Client] {
         guard !searchTerm.isEmpty else { return clients }
         return clients.filter {
-            $0.full_name.lowercased().contains(searchTerm.lowercased()) ||
+            $0.fullName.lowercased().contains(searchTerm.lowercased()) ||
             ($0.phone?.contains(searchTerm) ?? false)
         }
     }
@@ -401,8 +401,8 @@ class ClientsViewModel: ObservableObject {
     func archive(_ client: Client) async {
         do {
             let r = try await apiService.archiveClient(id: client.id)
-            if r.deleted_scheduled_sessions > 0 {
-                lastActionInfo = "Client archivé, \(r.deleted_scheduled_sessions) session(s) planifiée(s) supprimée(s)."
+            if r.deletedScheduledSessions > 0 {
+                lastActionInfo = "Client archivé, \(r.deletedScheduledSessions) session(s) planifiée(s) supprimée(s)."
             } else {
                 lastActionInfo = "Client archivé."
             }

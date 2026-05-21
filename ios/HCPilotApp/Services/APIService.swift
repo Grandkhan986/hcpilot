@@ -23,6 +23,9 @@ class APIService {
 
     private let decoder: JSONDecoder = {
         let d = JSONDecoder()
+        // Audit H2 : conversion automatique snake_case JSON → camelCase Swift.
+        // Évite d'écrire des CodingKeys explicites dans chaque Model.
+        d.keyDecodingStrategy = .convertFromSnakeCase
         d.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
@@ -56,6 +59,8 @@ class APIService {
 
     private let encoder: JSONEncoder = {
         let e = JSONEncoder()
+        // Audit H2 : symétrique du décodeur — Swift camelCase → JSON snake_case.
+        e.keyEncodingStrategy = .convertToSnakeCase
         e.dateEncodingStrategy = .iso8601
         return e
     }()
@@ -327,15 +332,15 @@ class APIService {
     // MARK: - Auth
 
     struct LoginResponse: Decodable {
-        let access_token: String
-        let token_type: String
+        let accessToken: String
+        let tokenType: String
         let user: UserProfile
     }
 
     func login(email: String, password: String) async throws -> LoginResponse {
         let body = ["email": email, "password": password]
         let response: LoginResponse = try await post("/auth/login", body: body)
-        setToken(response.access_token)
+        setToken(response.accessToken)
         return response
     }
 
@@ -354,24 +359,24 @@ class APIService {
     }
 
     /// Patch partiel d'une session (PATCH-like). Aligné brief : champs cliniques
-    /// vitals, drip_rate, IV times pour saisie pendant/après la perfusion.
+    /// vitals, dripRate, IV times pour saisie pendant/après la perfusion.
     struct SessionPatch: Encodable {
-        var formulation_name: String?
-        var formulation_inventory_id: String?
-        var scheduled_at: Date?
+        var formulationName: String?
+        var formulationInventoryId: String?
+        var scheduledAt: Date?
         var address: String?
         var latitude: Double?
         var longitude: Double?
-        var clinical_notes: String?
-        var estimated_duration: Int?
-        var total_amount: Double?
-        var iv_start_time: Date?
-        var iv_end_time: Date?
-        var pre_vitals: [String: String]?
-        var during_vitals: [String: String]?
-        var post_vitals: [String: String]?
-        var drip_rate: String?
-        var cancellation_reason: String?
+        var clinicalNotes: String?
+        var estimatedDuration: Int?
+        var totalAmount: Double?
+        var ivStartTime: Date?
+        var ivEndTime: Date?
+        var preVitals: [String: String]?
+        var duringVitals: [String: String]?
+        var postVitals: [String: String]?
+        var dripRate: String?
+        var cancellationReason: String?
     }
 
     func updateSession(id: String, patch: SessionPatch) async throws -> Session {
@@ -409,41 +414,41 @@ class APIService {
     /// - nil  → champ non touché côté backend (filtré)
     /// - ""   → champ vidé
     /// Aligné sur le brief schema `clients` (adresse splittée en 5 champs,
-    /// allergies/medical_conditions/medications en arrays).
+    /// allergies/medicalConditions/medications en arrays).
     struct ClientPatch: Encodable {
-        var first_name: String?
-        var last_name: String?
+        var firstName: String?
+        var lastName: String?
         var email: String?
         var phone: String?
-        var date_of_birth: String?
+        var dateOfBirth: String?
         var gender: String?
-        var address_line1: String?
-        var address_line2: String?
+        var addressLine1: String?
+        var addressLine2: String?
         var city: String?
-        var state_code: String?
-        var postal_code: String?
-        var access_notes: String?
+        var stateCode: String?
+        var postalCode: String?
+        var accessNotes: String?
         var allergies: [String]?
-        var medical_conditions: [String]?
+        var medicalConditions: [String]?
         var medications: [String]?
-        var emergency_contact_name: String?
-        var emergency_contact_phone: String?
+        var emergencyContactName: String?
+        var emergencyContactPhone: String?
     }
 
     /// Réponse de PUT /clients/{id} : client mis à jour + nb sessions futures
     /// resync'ées suite à un changement d'adresse.
     struct UpdatedClientResponse: Decodable {
         let id: String
-        let first_name: String
-        let last_name: String
-        let address_line1: String?
+        let firstName: String
+        let lastName: String
+        let addressLine1: String?
         let city: String?
-        let state_code: String?
-        let postal_code: String?
+        let stateCode: String?
+        let postalCode: String?
         let latitude: Double?
         let longitude: Double?
-        let archived_at: String?
-        let synced_future_sessions: Int?
+        let archivedAt: String?
+        let syncedFutureSessions: Int?
     }
 
     func updateClient(id: String, patch: ClientPatch) async throws -> UpdatedClientResponse {
@@ -454,8 +459,8 @@ class APIService {
     /// Renvoie le nombre de sessions planifiées supprimées.
     struct ArchiveClientResponse: Decodable {
         let message: String
-        let client_id: String
-        let deleted_scheduled_sessions: Int
+        let clientId: String
+        let deletedScheduledSessions: Int
     }
 
     func archiveClient(id: String) async throws -> ArchiveClientResponse {
@@ -511,13 +516,13 @@ class APIService {
     // MARK: - Reports
 
     struct DashboardResponse: Decodable {
-        let total_patients: Int
+        let totalClients: Int
         let today_visits: Int
-        let pending_invoices: Int
-        let low_stock_alerts: Int
-        let monthly_revenue: Double
-        let sessions_today: [Session]
-        let low_stock_items: [LowStockProduct]
+        let pendingInvoices: Int
+        let lowStockAlerts: Int
+        let monthlyRevenue: Double
+        let sessionsToday: [Session]
+        let lowStockItems: [LowStockProduct]
     }
 
     func getDashboard() async throws -> DashboardResponse {
@@ -542,7 +547,7 @@ class APIService {
     }
 
     func getStandingOrders() async throws -> [StandingOrderInfo] {
-        return try await cachedGet("/compliance/standing_orders")
+        return try await cachedGet("/compliance/standingOrders")
     }
 
     func acknowledgeAlert(id: String) async throws {
@@ -552,25 +557,25 @@ class APIService {
     // MARK: - Onboarding (wizard Sprint 1)
 
     struct UpdatePracticeRequest: Encodable {
-        var first_name: String?
-        var last_name: String?
+        var firstName: String?
+        var lastName: String?
         var phone: String?
-        var state_code: String?
-        var license_number: String?
-        var license_expiration_date: String?
-        var license_type: String?
-        var practice_name: String?
-        var npi_number: String?
+        var stateCode: String?
+        var licenseNumber: String?
+        var licenseExpirationDate: String?
+        var licenseType: String?
+        var practiceName: String?
+        var npiNumber: String?
     }
 
     struct PracticeResponse: Decodable {
-        let user_id: String
-        let state_code: String?
-        let license_number: String?
-        let license_expiration_date: String?
-        let license_type: String?
-        let practice_name: String?
-        let npi_number: String?
+        let userId: String
+        let stateCode: String?
+        let licenseNumber: String?
+        let licenseExpirationDate: String?
+        let licenseType: String?
+        let practiceName: String?
+        let npiNumber: String?
     }
 
     func updatePractice(_ payload: UpdatePracticeRequest) async throws -> PracticeResponse {
@@ -578,15 +583,15 @@ class APIService {
     }
 
     struct CreateMedicalDirectorRequest: Encodable {
-        let first_name: String
-        let last_name: String
+        let firstName: String
+        let lastName: String
         let email: String
-        let license_number: String
-        let state_code: String
-        let contract_start_date: String
-        let contract_end_date: String?
-        let audit_frequency_days: Int
-        let next_audit_date: String?
+        let licenseNumber: String
+        let stateCode: String
+        let contractStartDate: String
+        let contractEndDate: String?
+        let auditFrequencyDays: Int
+        let nextAuditDate: String?
     }
 
     func createMedicalDirector(_ payload: CreateMedicalDirectorRequest) async throws -> MedicalDirectorInfo {
@@ -594,20 +599,20 @@ class APIService {
     }
 
     struct CreateStandingOrderRequest: Encodable {
-        let formulation_name: String
-        let medical_director_id: String?
-        let expires_at: String?
+        let formulationName: String
+        let medicalDirectorId: String?
+        let expiresAt: String?
     }
 
     func createStandingOrder(_ payload: CreateStandingOrderRequest) async throws -> StandingOrderInfo {
-        return try await post("/compliance/standing_orders", body: payload)
+        return try await post("/compliance/standingOrders", body: payload)
     }
 
     // MARK: - Audit Logs
 
     func getAuditLogs(entityType: String? = nil, limit: Int = 100) async throws -> [AuditLogEntry] {
         var path = "/audit_logs?limit=\(limit)"
-        if let t = entityType { path += "&entity_type=\(t)" }
+        if let t = entityType { path += "&entityType=\(t)" }
         return try await get(path)
     }
 
@@ -623,12 +628,12 @@ class APIService {
 
     /// Renvoie le PDF base64 du consentement.
     struct ConsentPDFResponse: Decodable {
-        let pdf_b64: String
+        let pdfB64: String
     }
 
     func getConsentPDF(consentId: String) async throws -> Data {
         let resp: ConsentPDFResponse = try await get("/consents/\(consentId)/pdf")
-        guard let data = Data(base64Encoded: resp.pdf_b64) else {
+        guard let data = Data(base64Encoded: resp.pdfB64) else {
             throw APIError.invalidResponse
         }
         return data
@@ -637,16 +642,16 @@ class APIService {
     // MARK: - Route Optimization
 
     struct OptimizedStop: Decodable {
-        let session_id: String
+        let sessionId: String
         let order: Int
     }
 
     struct OptimizedRouteResponse: Decodable {
-        let optimized_route: [OptimizedStop]
+        let optimizedRoute: [OptimizedStop]
         /// Polyline points as [longitude, latitude] pairs (GeoJSON LineString order).
-        let route_geometry: [[Double]]?
-        let total_distance_m: Double
-        let total_duration_s: Double
+        let routeGeometry: [[Double]]?
+        let totalDistanceM: Double
+        let totalDurationS: Double
         let warning: String?
     }
 

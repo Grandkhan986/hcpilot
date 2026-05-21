@@ -102,8 +102,8 @@ class SessionsViewModel: ObservableObject {
     var filteredSessions: [Session] {
         sessions.filter { session in
             let matchesSearch = searchTerm.isEmpty ||
-                (session.client_name?.lowercased().contains(searchTerm.lowercased()) ?? false) ||
-                session.formulation_name.lowercased().contains(searchTerm.lowercased())
+                (session.clientName?.lowercased().contains(searchTerm.lowercased()) ?? false) ||
+                session.formulationName.lowercased().contains(searchTerm.lowercased())
             let matchesFilter = filter == "all" || session.status.rawValue == filter
             return matchesSearch && matchesFilter
         }
@@ -135,9 +135,9 @@ class SessionsViewModel: ObservableObject {
             clients = try await p
             // Enrich sessions with client names
             for i in sessions.indices {
-                if sessions[i].client_name == nil,
-                   let client = clients.first(where: { $0.id == sessions[i].client_id }) {
-                    sessions[i].client_name = client.full_name
+                if sessions[i].clientName == nil,
+                   let client = clients.first(where: { $0.id == sessions[i].clientId }) {
+                    sessions[i].clientName = client.fullName
                 }
             }
         } catch {
@@ -171,15 +171,15 @@ struct SessionDetailView: View {
                         .fill(Color.blue)
                         .frame(width: 50, height: 50)
                         .overlay(
-                            Text(String(session.client_name?.prefix(2) ?? "?").uppercased())
+                            Text(String(session.clientName?.prefix(2) ?? "?").uppercased())
                                 .foregroundColor(.white)
                                 .font(.caption2)
                         )
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(session.client_name ?? "Client")
+                        Text(session.clientName ?? "Client")
                             .font(.headline)
-                        Text(session.formulation_name.replacingOccurrences(of: "_", with: " "))
+                        Text(session.formulationName.replacingOccurrences(of: "_", with: " "))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -189,7 +189,7 @@ struct SessionDetailView: View {
                 HStack {
                     StatusBadge(status: session.status)
                     Spacer()
-                    Text(session.scheduled_at, formatter: Self.dateFormatter)
+                    Text(session.scheduledAt, formatter: Self.dateFormatter)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -206,7 +206,7 @@ struct SessionDetailView: View {
                 consentSection
 
                 // Notes
-                if let notes = session.clinical_notes, !notes.isEmpty {
+                if let notes = session.clinicalNotes, !notes.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Notes")
                             .font(.headline)
@@ -219,7 +219,7 @@ struct SessionDetailView: View {
                 // Total
                 HStack {
                     Spacer()
-                    Text(String(format: "Total: %.2f €", session.total))
+                    Text(String(format: "Total: %.2f €", session.totalAmount))
                         .font(.headline)
                         .fontWeight(.bold)
                 }
@@ -241,7 +241,7 @@ struct SessionDetailView: View {
                         .cornerRadius(8)
                     }
 
-                    if session.status == .in_progress {
+                    if session.status == .inProgress {
                         Button(action: { showLotUsageSheet = true }) {
                             Text("Terminer la session")
                                 .font(.headline)
@@ -280,8 +280,8 @@ struct SessionDetailView: View {
         .sheet(isPresented: $showConsentFlow) {
             ConsentFlowView(
                 session: session,
-                clientName: session.client_name ?? "Client",
-                nurseName: authViewModel.user?.full_name ?? "Soignant"
+                clientName: session.clientName ?? "Client",
+                nurseName: authViewModel.user?.fullName ?? "Soignant"
             ) {
                 Task { await loadConsent() }
                 onAction()
@@ -295,7 +295,7 @@ struct SessionDetailView: View {
         .sheet(isPresented: $showLotUsageSheet) {
             LotUsageSheet(
                 session: session,
-                preferredProductName: consent?.formulation_name,
+                preferredProductName: consent?.formulationName,
                 onCompleted: { onAction() }
             )
         }
@@ -324,19 +324,19 @@ struct SessionDetailView: View {
                     Image(systemName: "checkmark.seal.fill")
                         .foregroundStyle(.green)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Signé · \(consent.formulation_name)")
+                        Text("Signé · \(consent.formulationName)")
                             .font(.subheadline).fontWeight(.semibold)
-                        Text("Signé \(consent.signed_at, formatter: Self.consentDateFmt)")
+                        Text("Signé \(consent.signedAt, formatter: Self.consentDateFmt)")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                        if let lat = consent.signed_latitude, let lng = consent.signed_longitude {
+                        if let lat = consent.signedLatitude, let lng = consent.signedLongitude {
                             Text(String(format: "📍 %.4f, %.4f", lat, lng))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
                     }
                     Spacer()
-                    if consent.has_pdf {
+                    if consent.hasPdf {
                         Button {
                             Task { await openPDF(consentId: consent.id) }
                         } label: {
@@ -349,7 +349,7 @@ struct SessionDetailView: View {
                 .padding()
                 .background(Color.green.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-            } else if session.status == .scheduled || session.status == .in_progress {
+            } else if session.status == .scheduled || session.status == .inProgress {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
@@ -475,7 +475,7 @@ struct StatusBadge: View {
     private var iconName: String {
         switch status {
         case .completed: return "checkmark.circle.fill"
-        case .in_progress: return "clock.fill"
+        case .inProgress: return "clock.fill"
         case .cancelled: return "xmark.circle.fill"
         default: return "calendar.circle.fill"
         }
@@ -484,18 +484,18 @@ struct StatusBadge: View {
     private var label: String {
         switch status {
         case .scheduled: return "Planifiée"
-        case .en_route: return "En route"
-        case .in_progress: return "En cours"
+        case .enRoute: return "En route"
+        case .inProgress: return "En cours"
         case .completed: return "Terminée"
         case .cancelled: return "Annulée"
-        case .no_show: return "Absent"
+        case .noShow: return "Absent"
         }
     }
 
     private var bgColor: Color {
         switch status {
         case .completed: return Color.green.opacity(0.2)
-        case .in_progress: return Color.blue.opacity(0.2)
+        case .inProgress: return Color.blue.opacity(0.2)
         case .cancelled: return Color.red.opacity(0.2)
         default: return Color.gray.opacity(0.2)
         }
@@ -504,7 +504,7 @@ struct StatusBadge: View {
     private var fgColor: Color {
         switch status {
         case .completed: return .green
-        case .in_progress: return .blue
+        case .inProgress: return .blue
         case .cancelled: return .red
         default: return .gray
         }
@@ -547,15 +547,15 @@ struct NewSessionView: View {
                     } else {
                         Picker("Client", selection: $selectedClientId) {
                             ForEach(clients) { p in
-                                Text(p.full_name).tag(p.id)
+                                Text(p.fullName).tag(p.id)
                             }
                         }
                         .onChange(of: selectedClientId) { _, newId in
                             // Auto-remplit l'adresse depuis le client sélectionné
                             // si l'utilisateur n'a pas encore tapé une adresse custom.
                             if let p = clients.first(where: { $0.id == newId }),
-                               address.isEmpty || clients.contains(where: { $0.full_address == address }) {
-                                address = p.full_address
+                               address.isEmpty || clients.contains(where: { $0.fullAddress == address }) {
+                                address = p.fullAddress
                             }
                         }
                     }
@@ -574,7 +574,7 @@ struct NewSessionView: View {
                 Section(header: Text("Adresse")) {
                     TextField("Adresse", text: $address, axis: .vertical)
                         .lineLimit(1...3)
-                    if let p = selectedClient, p.full_address != address, !address.isEmpty {
+                    if let p = selectedClient, p.fullAddress != address, !address.isEmpty {
                         Text("⚠ Adresse différente de l'adresse du client")
                             .font(.caption2)
                             .foregroundStyle(.orange)
@@ -614,7 +614,7 @@ struct NewSessionView: View {
             clients = try await APIService.shared.getClients(archived: false)
             if selectedClientId.isEmpty, let first = clients.first {
                 selectedClientId = first.id
-                address = first.full_address
+                address = first.fullAddress
             }
         } catch {
             errorMessage = "Impossible de charger les clients : \(error.localizedDescription)"
@@ -626,36 +626,36 @@ struct NewSessionView: View {
         // Si l'adresse est inchangée par rapport à celle du client, on laisse
         // le backend copier ses coords. Si l'adresse a été éditée, on envoie nil
         // pour les coords — le backend re-géocodera si un token Mapbox est dispo.
-        let useCustomAddress = address != client.full_address
+        let useCustomAddress = address != client.fullAddress
         let total = Double(totalAmount.replacingOccurrences(of: ",", with: ".")) ?? 0
 
         let newSession = Session(
             id: UUID().uuidString,
-            client_id: client.id,
-            nurse_id: "",  // serveur remplit depuis le JWT
-            client_name: client.full_name,
-            formulation_name: serviceType,
-            formulation_inventory_id: nil,
+            clientId: client.id,
+            nurseId: "",  // serveur remplit depuis le JWT
+            clientName: client.fullName,
+            formulationName: serviceType,
+            formulationInventoryId: nil,
             status: .scheduled,
-            scheduled_at: scheduledAt,
-            created_at: Date(),
+            scheduledAt: scheduledAt,
+            createdAt: Date(),
             address: address,
             latitude: useCustomAddress ? nil : client.latitude,
             longitude: useCustomAddress ? nil : client.longitude,
-            total: total,
-            estimated_duration: estimatedDuration,
-            started_at: nil,
-            completed_at: nil,
-            iv_start_time: nil,
-            iv_end_time: nil,
-            pre_vitals: nil,
-            during_vitals: nil,
-            post_vitals: nil,
-            drip_rate: nil,
-            clinical_notes: notes.isEmpty ? nil : notes,
-            photos_paths: [],
-            cancelled_at: nil,
-            cancellation_reason: nil
+            totalAmount: total,
+            estimatedDuration: estimatedDuration,
+            startedAt: nil,
+            completedAt: nil,
+            ivStartTime: nil,
+            ivEndTime: nil,
+            preVitals: nil,
+            duringVitals: nil,
+            postVitals: nil,
+            dripRate: nil,
+            clinicalNotes: notes.isEmpty ? nil : notes,
+            photosPaths: [],
+            cancelledAt: nil,
+            cancellationReason: nil
         )
         Task {
             do {

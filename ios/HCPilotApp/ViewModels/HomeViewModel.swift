@@ -17,7 +17,7 @@ class HomeViewModel: ObservableObject {
     @Published var polylineCoordinates: [CLLocationCoordinate2D] = []
 
     var nextActiveSession: Session? {
-        upcomingSessions.first(where: { $0.status == .scheduled || $0.status == .in_progress })
+        upcomingSessions.first(where: { $0.status == .scheduled || $0.status == .inProgress })
     }
 
     private let apiService = APIService.shared
@@ -49,10 +49,10 @@ class HomeViewModel: ObservableObject {
             let dashboard = try await apiService.getDashboard()
 
             todaySessionsCount = dashboard.today_visits
-            monthlyRevenue = dashboard.monthly_revenue
-            lowStockCount = dashboard.low_stock_alerts
-            upcomingSessions = dashboard.sessions_today
-            stockItems = dashboard.low_stock_items
+            monthlyRevenue = dashboard.monthlyRevenue
+            lowStockCount = dashboard.lowStockAlerts
+            upcomingSessions = dashboard.sessionsToday
+            stockItems = dashboard.lowStockItems
 
             await loadRouteOptimization()
             // Reprogramme les rappels J-1 et H-2 selon les sessions du jour
@@ -83,11 +83,11 @@ class HomeViewModel: ObservableObject {
         do {
             let response = try await apiService.optimizeRoute(sessions: withCoords.map { $0.0 })
             let orderById = Dictionary(
-                uniqueKeysWithValues: response.optimized_route.map { ($0.session_id, $0.order) }
+                uniqueKeysWithValues: response.optimizedRoute.map { ($0.sessionId, $0.order) }
             )
             routeStops = withCoords.map { v, coord in
                 let order = orderById[v.id] ?? Int.max
-                let label = v.client_name ?? v.formulation_name.replacingOccurrences(of: "_", with: " ")
+                let label = v.clientName ?? v.formulationName.replacingOccurrences(of: "_", with: " ")
                 return RouteMapStop(
                     id: v.id,
                     order: order,
@@ -95,11 +95,11 @@ class HomeViewModel: ObservableObject {
                     title: label,
                     address: v.address,
                     status: v.status,
-                    startedAt: v.started_at,
-                    completedAt: v.completed_at
+                    startedAt: v.startedAt,
+                    completedAt: v.completedAt
                 )
             }.sorted { $0.order < $1.order }
-            polylineCoordinates = (response.route_geometry ?? []).compactMap { pair in
+            polylineCoordinates = (response.routeGeometry ?? []).compactMap { pair in
                 guard pair.count >= 2 else { return nil }
                 return CLLocationCoordinate2D(latitude: pair[1], longitude: pair[0])
             }
@@ -109,7 +109,7 @@ class HomeViewModel: ObservableObject {
     }
 
     func setUser(_ user: UserProfile?) {
-        userName = user?.full_name ?? "Docteur"
+        userName = user?.fullName ?? "Docteur"
     }
 
     func startSession(_ session: Session) {
@@ -181,7 +181,7 @@ struct SessionListItem: View {
                 )
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(session.client_name ?? "Client")
+                Text(session.clientName ?? "Client")
                     .font(.subheadline)
                     .fontWeight(.semibold)
 
@@ -189,12 +189,12 @@ struct SessionListItem: View {
                     Image(systemName: "clock")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text(session.scheduled_at, formatter: timeFormatter)
+                    Text(session.scheduledAt, formatter: timeFormatter)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
 
-                Text(session.formulation_name.replacingOccurrences(of: "_", with: " "))
+                Text(session.formulationName.replacingOccurrences(of: "_", with: " "))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -213,7 +213,7 @@ struct SessionListItem: View {
 
     private var statusColor: Color {
         switch session.status {
-        case .in_progress: return .blue
+        case .inProgress: return .blue
         case .completed: return .green
         case .cancelled: return .red
         default: return .orange
@@ -222,7 +222,7 @@ struct SessionListItem: View {
 
     private var statusIcon: String {
         switch session.status {
-        case .in_progress: return "clock.fill"
+        case .inProgress: return "clock.fill"
         case .completed: return "checkmark.circle"
         case .cancelled: return "xmark.circle"
         default: return "calendar.badge.clock"
@@ -251,12 +251,12 @@ struct StockStatusCard: View {
                         .font(.caption2)
                 )
 
-            Text(item.product_name)
+            Text(item.productName)
                 .font(.caption2)
                 .lineLimit(1)
                 .truncationMode(.tail)
 
-            Text("\(item.total_quantity)")
+            Text("\(item.totalQuantity)")
                 .font(.caption)
                 .fontWeight(.semibold)
 

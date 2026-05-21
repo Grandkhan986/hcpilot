@@ -6,14 +6,13 @@ enum AuditEntityType: String, Codable {
     case clients
     case sessions
     case users
-    case standing_orders
-    case medical_directors
-    case compliance_alerts
-    case inventory_lots
-    case inventory_transactions
+    case standingOrders = "standing_orders"
+    case medicalDirectors = "medical_directors"
+    case complianceAlerts = "compliance_alerts"
+    case inventoryLots = "inventory_lots"
+    case inventoryTransactions = "inventory_transactions"
     case unknown
 
-    // Décodage tolérant : valeur inconnue → .unknown
     init(from decoder: Decoder) throws {
         let s = try decoder.singleValueContainer().decode(String.self)
         self = AuditEntityType(rawValue: s) ?? .unknown
@@ -35,23 +34,21 @@ enum AuditAction: String, Codable {
     }
 }
 
-/// Entrée immuable du journal d'audit. Brief §HIPAA : conservation 7 ans, IP/UA
-/// capturées côté serveur. Date occurred_at typée Date (audit H1).
+/// Entrée immuable du journal d'audit. Brief §HIPAA : conservation 7 ans,
+/// IP/UA capturées côté serveur. camelCase Swift / snake_case JSON.
 struct AuditLogEntry: Identifiable, Codable {
     let id: String
-    let nurse_id: String?
-    let entity_type: AuditEntityType
-    let entity_id: String
+    let nurseId: String?
+    let entityType: AuditEntityType
+    let entityId: String
     let action: AuditAction
     let changes: AnyJSONValue?
-    let ip_address: String?
-    let user_agent: String?
-    let occurred_at: Date
+    let ipAddress: String?
+    let userAgent: String?
+    let occurredAt: Date
 }
 
-/// Représentation décodable de toute valeur JSON (audit H12).
-/// Supporte récursivement string/int/double/bool/null/array/object pour ne
-/// jamais perdre d'information dans l'affichage du journal d'audit.
+/// Représentation décodable récursive de toute valeur JSON (audit H12).
 indirect enum AnyJSONValue: Codable, Hashable {
     case string(String)
     case int(Int)
@@ -95,7 +92,6 @@ indirect enum AnyJSONValue: Codable, Hashable {
         }
     }
 
-    /// Représentation lisible pour l'affichage (collapsed inline).
     var displayString: String {
         switch self {
         case .string(let s): return s
@@ -111,7 +107,6 @@ indirect enum AnyJSONValue: Codable, Hashable {
         }
     }
 
-    /// Si la valeur est un objet, renvoie ses clés (utile pour rendre des rows).
     var asObject: [String: AnyJSONValue]? {
         if case .object(let o) = self { return o }
         return nil

@@ -10,7 +10,7 @@ struct InventoryListView: View {
     var filtered: [InventoryProduct] {
         guard !searchTerm.isEmpty else { return vm.products }
         return vm.products.filter {
-            $0.product_name.localizedCaseInsensitiveContains(searchTerm)
+            $0.productName.localizedCaseInsensitiveContains(searchTerm)
         }
     }
 
@@ -39,7 +39,7 @@ struct InventoryListView: View {
                     Spacer()
                 } else {
                     List(filtered) { product in
-                        NavigationLink(destination: InventoryDetailView(productName: product.product_name)) {
+                        NavigationLink(destination: InventoryDetailView(productName: product.productName)) {
                             ProductRow(product: product)
                         }
                     }
@@ -109,32 +109,32 @@ private struct ProductRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Circle()
-                .fill(colorForStatus(product.expiration_status))
+                .fill(colorForStatus(product.expirationStatus))
                 .frame(width: 12, height: 12)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(product.product_name)
+                Text(product.productName)
                     .font(.subheadline).fontWeight(.semibold)
                 HStack(spacing: 8) {
-                    Text(product.product_category.capitalized)
+                    Text(product.productCategory.capitalized)
                         .font(.caption2)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Color(.systemGray5))
                         .clipShape(Capsule())
-                    Text("\(product.lot_count) lot\(product.lot_count > 1 ? "s" : "")")
+                    Text("\(product.lotCount) lot\(product.lotCount > 1 ? "s" : "")")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    Text("Exp. \(product.nearest_expiration, style: .date)")
+                    Text("Exp. \(product.nearestExpiration, style: .date)")
                         .font(.caption2)
-                        .foregroundStyle(colorForStatus(product.expiration_status))
+                        .foregroundStyle(colorForStatus(product.expirationStatus))
                 }
             }
 
             Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text("\(product.total_quantity)")
+                Text("\(product.totalQuantity)")
                     .font(.headline)
                 Text("unités")
                     .font(.caption2)
@@ -163,11 +163,11 @@ final class InventoryViewModel: ObservableObject {
     private let api = APIService.shared
 
     var totalValue: Double {
-        products.reduce(0) { $0 + $1.total_value }
+        products.reduce(0) { $0 + $1.totalValue }
     }
 
     var expiringCount: Int {
-        products.filter { [.warning, .critical, .expired].contains($0.expiration_status) }.count
+        products.filter { [.warning, .critical, .expired].contains($0.expirationStatus) }.count
     }
 
     func load() async {

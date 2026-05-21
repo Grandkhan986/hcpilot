@@ -51,55 +51,55 @@ final class NotificationService {
     func scheduleComplianceNotifications(from dashboard: ComplianceDashboard) async {
         await removeScheduled(withPrefix: "compliance:")
 
-        if let license = dashboard.license, let exp = license.expiration_date {
-            let typeLabel = license.license_type ?? "votre licence"
+        if let license = dashboard.license, let exp = license.expirationDate {
+            let typeLabel = license.licenseType ?? "votre licence"
             for d in [90, 30, 7, 1] {
                 await scheduleOnce(
                     id: "compliance:license:J-\(d)",
                     title: "Licence à renouveler",
-                    body: "Votre licence \(typeLabel) (\(license.state_code ?? "?")) expire dans \(d) jour\(d > 1 ? "s" : "").",
+                    body: "Votre licence \(typeLabel) (\(license.stateCode ?? "?")) expire dans \(d) jour\(d > 1 ? "s" : "").",
                     target: exp,
                     daysBefore: d
                 )
             }
         }
 
-        if let md = dashboard.medical_director, let mdEnd = md.contract_end_date {
+        if let md = dashboard.medicalDirector, let mdEnd = md.contractEndDate {
             for d in [60, 30, 7] {
                 await scheduleOnce(
                     id: "compliance:md:J-\(d)",
                     title: "Contrat Medical Director",
-                    body: "Le contrat avec \(md.full_name) expire dans \(d) jour\(d > 1 ? "s" : "").",
+                    body: "Le contrat avec \(md.fullName) expire dans \(d) jour\(d > 1 ? "s" : "").",
                     target: mdEnd,
                     daysBefore: d
                 )
             }
         }
 
-        if let md = dashboard.medical_director, let auditDate = md.next_audit_date {
+        if let md = dashboard.medicalDirector, let auditDate = md.nextAuditDate {
             await scheduleOnce(
                 id: "compliance:audit:J-7",
                 title: "Audit MD à venir",
-                body: "Préparer l'audit avec \(md.full_name) dans 7 jours.",
+                body: "Préparer l'audit avec \(md.fullName) dans 7 jours.",
                 target: auditDate,
                 daysBefore: 7
             )
             await scheduleOnce(
                 id: "compliance:audit:J-0",
                 title: "Audit MD aujourd'hui",
-                body: "Audit prévu avec \(md.full_name) aujourd'hui.",
+                body: "Audit prévu avec \(md.fullName) aujourd'hui.",
                 target: auditDate,
                 daysBefore: 0
             )
         }
 
-        for so in dashboard.standing_orders where so.is_active {
-            if let exp = so.expires_at {
+        for so in dashboard.standingOrders where so.isActive {
+            if let exp = so.expiresAt {
                 for d in [30, 7] {
                     await scheduleOnce(
                         id: "compliance:so:\(so.id):J-\(d)",
                         title: "Standing order à renouveler",
-                        body: "\(so.formulation_name) expire dans \(d) jour\(d > 1 ? "s" : "").",
+                        body: "\(so.formulationName) expire dans \(d) jour\(d > 1 ? "s" : "").",
                         target: exp,
                         daysBefore: d
                     )
@@ -115,7 +115,7 @@ final class NotificationService {
         await removeScheduled(withPrefix: "session:")
         let now = Date()
         for session in sessions where session.status == .scheduled {
-            let target = session.scheduled_at
+            let target = session.scheduledAt
             guard target > now else { continue }
 
             // J-1 (à 8h le jour J-1)
@@ -125,7 +125,7 @@ final class NotificationService {
                     await scheduleAt(
                         id: "session:\(session.id):J-1",
                         title: "RDV demain",
-                        body: "\(session.client_name ?? "Client") à \(formatTime(target))",
+                        body: "\(session.clientName ?? "Client") à \(formatTime(target))",
                         fireDate: dateAt8
                     )
                 }
@@ -137,7 +137,7 @@ final class NotificationService {
                 await scheduleAt(
                     id: "session:\(session.id):H-2",
                     title: "RDV dans 2 heures",
-                    body: "\(session.client_name ?? "Client") à \(formatTime(target))",
+                    body: "\(session.clientName ?? "Client") à \(formatTime(target))",
                     fireDate: twoHoursBefore
                 )
             }

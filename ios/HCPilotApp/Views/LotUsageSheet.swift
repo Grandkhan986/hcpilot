@@ -6,7 +6,7 @@ import SwiftUI
 /// (le complete est alors fait sans entrée d'inventaire).
 struct LotUsageSheet: View {
     let session: Session
-    /// Si fourni, filtre les lots dont le `product_name` matche (utile quand
+    /// Si fourni, filtre les lots dont le `productName` matche (utile quand
     /// on connaît la formulation via un consentement déjà signé).
     let preferredProductName: String?
     var onCompleted: () -> Void
@@ -23,9 +23,9 @@ struct LotUsageSheet: View {
 
     private var displayedLots: [InventoryLot] {
         let filtered = (filterToPreferred && preferredProductName != nil)
-            ? lots.filter { $0.product_name == preferredProductName }
+            ? lots.filter { $0.productName == preferredProductName }
             : lots
-        return filtered.sorted { $0.expiration_date < $1.expiration_date }
+        return filtered.sorted { $0.expirationDate < $1.expirationDate }
     }
 
     private var selectedLot: InventoryLot? {
@@ -71,7 +71,7 @@ struct LotUsageSheet: View {
                         HStack {
                             Text("Quantité utilisée").font(.subheadline)
                             Spacer()
-                            Stepper("\(quantity)", value: $quantity, in: 1...lot.quantity_remaining)
+                            Stepper("\(quantity)", value: $quantity, in: 1...lot.quantityRemaining)
                                 .labelsHidden()
                             Text("\(quantity)").frame(minWidth: 30)
                         }
@@ -147,8 +147,8 @@ struct LotUsageSheet: View {
         defer { isSubmitting = false }
         do {
             _ = try await APIService.shared.recordUsage(RecordUsageRequest(
-                lot_id: lot.id,
-                session_id: session.id,
+                lotId: lot.id,
+                sessionId: session.id,
                 quantity: quantity,
                 notes: notes.isEmpty ? nil : notes
             ))
@@ -183,20 +183,20 @@ private struct LotRow: View {
             Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(isSelected ? .green : .secondary)
             VStack(alignment: .leading, spacing: 2) {
-                Text(lot.product_name).font(.subheadline).fontWeight(.semibold)
+                Text(lot.productName).font(.subheadline).fontWeight(.semibold)
                 HStack(spacing: 8) {
-                    Text("Lot \(lot.lot_number)").font(.caption)
-                    Text("Exp. \(lot.expiration_date, style: .date)")
+                    Text("Lot \(lot.lotNumber)").font(.caption)
+                    Text("Exp. \(lot.expirationDate, style: .date)")
                         .font(.caption2)
-                        .foregroundStyle(colorForStatus(lot.expiration_status ?? .ok))
+                        .foregroundStyle(colorForStatus(lot.expirationStatus ?? .ok))
                 }
                 .foregroundStyle(.secondary)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 0) {
-                Text("\(lot.quantity_remaining)")
+                Text("\(lot.quantityRemaining)")
                     .font(.headline)
-                Text("restant\(lot.quantity_remaining > 1 ? "s" : "")")
+                Text("restant\(lot.quantityRemaining > 1 ? "s" : "")")
                     .font(.caption2).foregroundStyle(.secondary)
             }
         }

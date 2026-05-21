@@ -70,7 +70,7 @@ struct LotEntryView: View {
                     Section {
                         HStack {
                             Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                            Text("Produit reconnu : \(prefill.product_name)").font(.caption)
+                            Text("Produit reconnu : \(prefill.productName)").font(.caption)
                         }
                     }
                 }
@@ -128,10 +128,10 @@ struct LotEntryView: View {
 
     private func applyPrefill() {
         if let prefill {
-            productName = prefill.product_name
-            category = prefill.product_category
+            productName = prefill.productName
+            category = prefill.productCategory
             if let s = prefill.supplier { supplier = s }
-            if let c = prefill.unit_cost { unitCost = String(format: "%.2f", c) }
+            if let c = prefill.unitCost { unitCost = String(format: "%.2f", c) }
         }
     }
 
@@ -143,15 +143,15 @@ struct LotEntryView: View {
         df.timeZone = TimeZone(secondsFromGMT: 0)
         let cost = Double(unitCost.replacingOccurrences(of: ",", with: "."))
         let payload = CreateLotRequest(
-            product_name: productName,
-            product_category: category,
+            productName: productName,
+            productCategory: category,
             barcode: barcode,
-            lot_number: lotNumber,
-            expiration_date: df.string(from: expirationDate),
-            quantity_initial: quantityInitial,
-            unit_cost: cost,
+            lotNumber: lotNumber,
+            expirationDate: df.string(from: expirationDate),
+            quantityInitial: quantityInitial,
+            unitCost: cost,
             supplier: supplier.isEmpty ? nil : supplier,
-            received_at: df.string(from: Date()),
+            receivedAt: df.string(from: Date()),
             notes: notes.isEmpty ? nil : notes
         )
         do {

@@ -3,7 +3,7 @@ import SwiftUI
 /// Wizard d'onboarding Sprint 1 du brief HCPilot. 3 étapes guidées :
 /// 1. Pratique & licence  (PUT /users/me/practice)
 /// 2. Medical Director    (POST /compliance/medical_directors)
-/// 3. Premier standing order (POST /compliance/standing_orders depuis template)
+/// 3. Premier standing order (POST /compliance/standingOrders depuis template)
 /// + écran de bienvenue final.
 struct SetupWizardView: View {
     var onCompleted: () -> Void
@@ -375,15 +375,15 @@ final class SetupWizardViewModel: ObservableObject {
         errorMessage = nil
         defer { isSubmitting = false }
         let payload = APIService.UpdatePracticeRequest(
-            first_name: firstName,
-            last_name: lastName,
+            firstName: firstName,
+            lastName: lastName,
             phone: phone.isEmpty ? nil : phone,
-            state_code: stateCode,
-            license_number: licenseNumber,
-            license_expiration_date: ymd(licenseExpirationDate),
-            license_type: licenseType,
-            practice_name: practiceName.isEmpty ? nil : practiceName,
-            npi_number: npiNumber.isEmpty ? nil : npiNumber
+            stateCode: stateCode,
+            licenseNumber: licenseNumber,
+            licenseExpirationDate: ymd(licenseExpirationDate),
+            licenseType: licenseType,
+            practiceName: practiceName.isEmpty ? nil : practiceName,
+            npiNumber: npiNumber.isEmpty ? nil : npiNumber
         )
         do {
             _ = try await api.updatePractice(payload)
@@ -398,15 +398,15 @@ final class SetupWizardViewModel: ObservableObject {
         errorMessage = nil
         defer { isSubmitting = false }
         let payload = APIService.CreateMedicalDirectorRequest(
-            first_name: mdFirstName,
-            last_name: mdLastName,
+            firstName: mdFirstName,
+            lastName: mdLastName,
             email: mdEmail,
-            license_number: mdLicenseNumber,
-            state_code: mdStateCode,
-            contract_start_date: ymd(mdContractStart),
-            contract_end_date: ymd(mdContractEnd),
-            audit_frequency_days: mdAuditFrequencyDays,
-            next_audit_date: nil
+            licenseNumber: mdLicenseNumber,
+            stateCode: mdStateCode,
+            contractStartDate: ymd(mdContractStart),
+            contractEndDate: ymd(mdContractEnd),
+            auditFrequencyDays: mdAuditFrequencyDays,
+            nextAuditDate: nil
         )
         do {
             let md = try await api.createMedicalDirector(payload)
@@ -422,9 +422,9 @@ final class SetupWizardViewModel: ObservableObject {
         errorMessage = nil
         defer { isSubmitting = false }
         let payload = APIService.CreateStandingOrderRequest(
-            formulation_name: standingOrderFormulation,
-            medical_director_id: createdMedicalDirectorId,
-            expires_at: ymd(standingOrderExpiresAt)
+            formulationName: standingOrderFormulation,
+            medicalDirectorId: createdMedicalDirectorId,
+            expiresAt: ymd(standingOrderExpiresAt)
         )
         do {
             _ = try await api.createStandingOrder(payload)

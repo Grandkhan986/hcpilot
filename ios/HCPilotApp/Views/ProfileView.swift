@@ -19,7 +19,7 @@ struct ProfileView: View {
                                     .foregroundColor(.white)
                             )
 
-                        Text(authViewModel.user?.full_name ?? "Utilisateur")
+                        Text(authViewModel.user?.fullName ?? "Utilisateur")
                             .font(.headline)
                             .fontWeight(.bold)
 

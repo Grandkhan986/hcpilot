@@ -63,12 +63,12 @@ struct SessionFormView: View {
     }
 
     private func preload() {
-        sessionType = session.formulation_name
+        sessionType = session.formulationName
         address = session.address
-        notes = session.clinical_notes ?? ""
-        scheduledAt = session.scheduled_at
-        estimatedDuration = session.estimated_duration ?? 60
-        totalAmount = String(format: "%.2f", session.total)
+        notes = session.clinicalNotes ?? ""
+        scheduledAt = session.scheduledAt
+        estimatedDuration = session.estimatedDuration ?? 60
+        totalAmount = String(format: "%.2f", session.totalAmount)
     }
 
     private func save() async {
@@ -77,16 +77,16 @@ struct SessionFormView: View {
         defer { isSaving = false }
 
         let patch = APIService.SessionPatch(
-            formulation_name: sessionType != session.formulation_name ? sessionType : nil,
-            scheduled_at: scheduledAt != session.scheduled_at ? scheduledAt : nil,
+            formulationName: sessionType != session.formulationName ? sessionType : nil,
+            scheduledAt: scheduledAt != session.scheduledAt ? scheduledAt : nil,
             address: address != session.address ? address : nil,
             // Adresse changée → on laisse le backend regéocoder (lat/lng à nil)
             latitude: nil,
             longitude: nil,
-            clinical_notes: notes != (session.clinical_notes ?? "") ? notes : nil,
-            estimated_duration: estimatedDuration != (session.estimated_duration ?? 60) ? estimatedDuration : nil,
-            total_amount: Double(totalAmount.replacingOccurrences(of: ",", with: "."))
-                .flatMap { $0 != session.total ? $0 : nil }
+            clinicalNotes: notes != (session.clinicalNotes ?? "") ? notes : nil,
+            estimatedDuration: estimatedDuration != (session.estimatedDuration ?? 60) ? estimatedDuration : nil,
+            totalAmount: Double(totalAmount.replacingOccurrences(of: ",", with: "."))
+                .flatMap { $0 != session.totalAmount ? $0 : nil }
         )
 
         do {

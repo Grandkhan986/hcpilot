@@ -71,7 +71,7 @@ struct InvoiceListItem: View {
                 )
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(invoice.invoice_number)
+                Text(invoice.invoiceNumber)
                     .font(.headline)
 
                 if let items = invoice.items, let first = items.first {
@@ -80,7 +80,7 @@ struct InvoiceListItem: View {
                         .foregroundColor(.secondary)
                 }
 
-                Text(invoice.created_at, style: .date)
+                Text(invoice.createdAt, style: .date)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -172,7 +172,7 @@ class InvoicesViewModel: ObservableObject {
     var filteredInvoices: [Invoice] {
         invoices.filter { invoice in
             let matchesSearch = searchTerm.isEmpty ||
-                invoice.invoice_number.lowercased().contains(searchTerm.lowercased())
+                invoice.invoiceNumber.lowercased().contains(searchTerm.lowercased())
             let matchesFilter = filter == "all" || invoice.status.rawValue == filter
             return matchesSearch && matchesFilter
         }
@@ -207,7 +207,7 @@ struct InvoiceDetailView: View {
                     VStack(alignment: .leading) {
                         Text("Facture")
                             .font(.headline)
-                        Text(invoice.invoice_number)
+                        Text(invoice.invoiceNumber)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -301,21 +301,21 @@ struct NewInvoiceView: View {
         let item = InvoiceItem(description: description, quantity: quantity, price: price)
         let invoice = Invoice(
             id: UUID().uuidString,
-            client_id: "pat_001",
-            client_name: nil,
-            session_id: nil,
-            invoice_number: "INV-NEW",
+            clientId: "pat_001",
+            clientName: nil,
+            sessionId: nil,
+            invoiceNumber: "INV-NEW",
             status: .draft,
             subtotal: price * Double(quantity),
             tax: 0,
             discount: 0,
             total: price * Double(quantity),
             items: [item],
-            due_date: Date(),
-            paid_at: nil,
-            stripe_payment_intent_id: nil,
-            created_at: Date(),
-            updated_at: nil
+            dueDate: Date(),
+            paidAt: nil,
+            stripePaymentIntentId: nil,
+            createdAt: Date(),
+            updatedAt: nil
         )
         Task {
             do {

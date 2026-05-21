@@ -54,8 +54,8 @@ struct InventoryDetailView: View {
         defer { isLoading = false }
         do {
             let all = try await APIService.shared.getInventoryLots()
-            lots = all.filter { $0.product_name == productName }
-                .sorted { $0.expiration_date < $1.expiration_date }
+            lots = all.filter { $0.productName == productName }
+                .sorted { $0.expirationDate < $1.expirationDate }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -68,14 +68,14 @@ private struct LotRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Lot \(lot.lot_number)").font(.subheadline).fontWeight(.semibold)
+                Text("Lot \(lot.lotNumber)").font(.subheadline).fontWeight(.semibold)
                 Spacer()
-                StatusChip(status: lot.expiration_status ?? .unknown)
+                StatusChip(status: lot.expirationStatus ?? .unknown)
             }
             HStack(spacing: 14) {
-                Label("\(lot.quantity_remaining)/\(lot.quantity_initial)", systemImage: "cube")
-                Label("Exp. \(lot.expiration_date, style: .date)", systemImage: "calendar")
-                if let d = lot.days_to_expiry {
+                Label("\(lot.quantityRemaining)/\(lot.quantityInitial)", systemImage: "cube")
+                Label("Exp. \(lot.expirationDate, style: .date)", systemImage: "calendar")
+                if let d = lot.daysToExpiry {
                     Text(d < 0 ? "Expiré" : "J-\(d)")
                         .foregroundStyle(d < 30 ? .red : .secondary)
                 }
@@ -87,7 +87,7 @@ private struct LotRow: View {
                     Label(supplier, systemImage: "shippingbox")
                         .font(.caption2)
                 }
-                if let cost = lot.unit_cost {
+                if let cost = lot.unitCost {
                     Label(String(format: "%.2f €/unité", cost), systemImage: "eurosign.circle")
                         .font(.caption2)
                 }
@@ -142,16 +142,16 @@ private struct UsageSheet: View {
         NavigationView {
             Form {
                 Section("Lot") {
-                    Text(lot.product_name).font(.headline)
+                    Text(lot.productName).font(.headline)
                     HStack {
-                        Text("Lot \(lot.lot_number)")
+                        Text("Lot \(lot.lotNumber)")
                         Spacer()
-                        Text("Restant : \(lot.quantity_remaining)")
+                        Text("Restant : \(lot.quantityRemaining)")
                             .foregroundStyle(.secondary)
                     }
                 }
                 Section("Usage") {
-                    Stepper("Quantité : \(quantity)", value: $quantity, in: 1...lot.quantity_remaining)
+                    Stepper("Quantité : \(quantity)", value: $quantity, in: 1...lot.quantityRemaining)
                     TextField("Notes (optionnel)", text: $notes, axis: .vertical)
                         .lineLimit(2...4)
                 }
@@ -177,8 +177,8 @@ private struct UsageSheet: View {
         isSubmitting = true
         defer { isSubmitting = false }
         let payload = RecordUsageRequest(
-            lot_id: lot.id,
-            session_id: nil,
+            lotId: lot.id,
+            sessionId: nil,
             quantity: quantity,
             notes: notes.isEmpty ? nil : notes
         )

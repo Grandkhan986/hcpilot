@@ -180,9 +180,9 @@ struct SessionLifecycleButton: View {
     let onComplete: (Session) -> Void  // conservé pour compat, non utilisé en in_progress
 
     var body: some View {
-        if let session, session.status == .in_progress {
+        if let session, session.status == .inProgress {
             VStack(spacing: 6) {
-                if let startedAt = session.started_at {
+                if let startedAt = session.startedAt {
                     HStack(spacing: 4) {
                         Image(systemName: "clock.fill")
                             .font(.caption2)

@@ -2,10 +2,10 @@ import SwiftUI
 import MapKit
 
 struct RouteMapStop: Identifiable, Equatable {
-    let id: String          // session_id
+    let id: String          // sessionId
     let order: Int          // position dans l'itinéraire optimisé (0-based)
     let coordinate: CLLocationCoordinate2D
-    let title: String       // client_name ou type
+    let title: String       // clientName ou type
     let address: String
     let status: Session.SessionStatus
     let startedAt: Date?
@@ -237,7 +237,7 @@ struct StopMarker: View {
     private var color: Color {
         switch stop.status {
         case .completed: return .green
-        case .in_progress: return .blue
+        case .inProgress: return .blue
         case .cancelled: return .gray
         default: return .red
         }
@@ -297,15 +297,15 @@ private struct StopDetailSheet: View {
                 }
 
                 switch stop.status {
-                case .scheduled, .en_route:
+                case .scheduled, .enRoute:
                     Button { onStart(stop) } label: {
                         actionLabel("play.circle.fill", "Commencer la session", color: .green)
                     }
-                case .in_progress:
+                case .inProgress:
                     Button { onComplete(stop) } label: {
                         actionLabel("checkmark.circle.fill", "Terminer la session", color: .green)
                     }
-                case .completed, .cancelled, .no_show:
+                case .completed, .cancelled, .noShow:
                     EmptyView()
                 }
             }
@@ -318,7 +318,7 @@ private struct StopDetailSheet: View {
     @ViewBuilder
     private var timeInfo: some View {
         switch stop.status {
-        case .in_progress:
+        case .inProgress:
             if let startedAt = stop.startedAt {
                 HStack(spacing: 6) {
                     Image(systemName: "clock.fill").foregroundStyle(.blue)
@@ -469,7 +469,7 @@ final class RouteMapViewModel: ObservableObject {
 
     /// Première session non terminée dans l'ordre optimisé.
     var nextStop: RouteMapStop? {
-        stops.first(where: { $0.status == .scheduled || $0.status == .in_progress })
+        stops.first(where: { $0.status == .scheduled || $0.status == .inProgress })
     }
 
     func start(stopId: String) async {
@@ -503,13 +503,13 @@ final class RouteMapViewModel: ObservableObject {
             let clients = try await clientsTask
 
             let todays = sessions.filter {
-                calendar.isDateInToday($0.scheduled_at) && $0.status != .cancelled
+                calendar.isDateInToday($0.scheduledAt) && $0.status != .cancelled
             }
             let withCoords = todays.compactMap { v -> (Session, CLLocationCoordinate2D)? in
                 if let lat = v.latitude, let lng = v.longitude {
                     return (v, CLLocationCoordinate2D(latitude: lat, longitude: lng))
                 }
-                if let p = clients.first(where: { $0.id == v.client_id }),
+                if let p = clients.first(where: { $0.id == v.clientId }),
                    let lat = p.latitude, let lng = p.longitude {
                     return (v, CLLocationCoordinate2D(latitude: lat, longitude: lng))
                 }
@@ -532,12 +532,12 @@ final class RouteMapViewModel: ObservableObject {
             warning = (withCoords.count == 1) ? nil : response.warning
 
             let orderById = Dictionary(
-                uniqueKeysWithValues: response.optimized_route.map { ($0.session_id, $0.order) }
+                uniqueKeysWithValues: response.optimizedRoute.map { ($0.sessionId, $0.order) }
             )
 
             let built: [RouteMapStop] = withCoords.map { v, coord in
                 let order = orderById[v.id] ?? Int.max
-                let label = v.client_name ?? v.formulation_name.replacingOccurrences(of: "_", with: " ")
+                let label = v.clientName ?? v.formulationName.replacingOccurrences(of: "_", with: " ")
                 return RouteMapStop(
                     id: v.id,
                     order: order,
@@ -545,19 +545,19 @@ final class RouteMapViewModel: ObservableObject {
                     title: label,
                     address: v.address,
                     status: v.status,
-                    startedAt: v.started_at,
-                    completedAt: v.completed_at
+                    startedAt: v.startedAt,
+                    completedAt: v.completedAt
                 )
             }.sorted { $0.order < $1.order }
 
             stops = built
             // Geometry GeoJSON: [[lng, lat], ...] → CLLocationCoordinate2D
-            polylineCoordinates = (response.route_geometry ?? []).compactMap { pair in
+            polylineCoordinates = (response.routeGeometry ?? []).compactMap { pair in
                 guard pair.count >= 2 else { return nil }
                 return CLLocationCoordinate2D(latitude: pair[1], longitude: pair[0])
             }
-            totalDistanceKm = response.total_distance_m / 1000.0
-            totalDurationMin = Int((response.total_duration_s / 60.0).rounded())
+            totalDistanceKm = response.totalDistanceM / 1000.0
+            totalDurationMin = Int((response.totalDurationS / 60.0).rounded())
         } catch {
             errorMessage = "Erreur de chargement : \(error.localizedDescription)"
             stops = []

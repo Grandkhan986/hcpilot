@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Formulaire client — création ou édition. Aligné sur le brief schema :
-/// adresse splittée en 5 champs, allergies/medications/medical_conditions en arrays.
+/// adresse splittée en 5 champs, allergies/medications/medicalConditions en arrays.
 struct ClientFormView: View {
     enum Mode {
         case create
@@ -121,23 +121,23 @@ struct ClientFormView: View {
 
     private func preload() {
         if case .edit(let c) = mode {
-            firstName = c.first_name
-            lastName = c.last_name
+            firstName = c.firstName
+            lastName = c.lastName
             email = c.email ?? ""
             phone = c.phone ?? ""
-            dateOfBirth = c.date_of_birth ?? ""
+            dateOfBirth = c.dateOfBirth ?? ""
             gender = c.gender ?? ""
-            addressLine1 = c.address_line1 ?? ""
-            addressLine2 = c.address_line2 ?? ""
+            addressLine1 = c.addressLine1 ?? ""
+            addressLine2 = c.addressLine2 ?? ""
             city = c.city ?? ""
-            stateCode = c.state_code ?? ""
-            postalCode = c.postal_code ?? ""
-            accessNotes = c.access_notes ?? ""
+            stateCode = c.stateCode ?? ""
+            postalCode = c.postalCode ?? ""
+            accessNotes = c.accessNotes ?? ""
             allergiesStr = c.allergies.joined(separator: ", ")
-            medicalConditionsStr = c.medical_conditions.joined(separator: ", ")
+            medicalConditionsStr = c.medicalConditions.joined(separator: ", ")
             medicationsStr = c.medications.joined(separator: ", ")
-            emergencyName = c.emergency_contact_name ?? ""
-            emergencyPhone = c.emergency_contact_phone ?? ""
+            emergencyName = c.emergencyContactName ?? ""
+            emergencyPhone = c.emergencyContactPhone ?? ""
         }
     }
 
@@ -160,30 +160,30 @@ struct ClientFormView: View {
                 let now = Date()
                 let newClient = Client(
                     id: UUID().uuidString,
-                    nurse_id: "",  // serveur remplit depuis le JWT
-                    first_name: firstName,
-                    last_name: lastName,
+                    nurseId: "",  // serveur remplit depuis le JWT
+                    firstName: firstName,
+                    lastName: lastName,
                     email: email.isEmpty ? nil : email,
                     phone: phone.isEmpty ? nil : phone,
-                    date_of_birth: dateOfBirth.isEmpty ? nil : dateOfBirth,
+                    dateOfBirth: dateOfBirth.isEmpty ? nil : dateOfBirth,
                     gender: gender.isEmpty ? nil : gender,
-                    address_line1: addressLine1.isEmpty ? nil : addressLine1,
-                    address_line2: addressLine2.isEmpty ? nil : addressLine2,
+                    addressLine1: addressLine1.isEmpty ? nil : addressLine1,
+                    addressLine2: addressLine2.isEmpty ? nil : addressLine2,
                     city: city.isEmpty ? nil : city,
-                    state_code: stateCode.isEmpty ? nil : stateCode,
-                    postal_code: postalCode.isEmpty ? nil : postalCode,
-                    access_notes: accessNotes.isEmpty ? nil : accessNotes,
+                    stateCode: stateCode.isEmpty ? nil : stateCode,
+                    postalCode: postalCode.isEmpty ? nil : postalCode,
+                    accessNotes: accessNotes.isEmpty ? nil : accessNotes,
                     latitude: nil,
                     longitude: nil,
                     allergies: splitCSV(allergiesStr),
-                    medical_conditions: splitCSV(medicalConditionsStr),
+                    medicalConditions: splitCSV(medicalConditionsStr),
                     medications: splitCSV(medicationsStr),
-                    emergency_contact_name: emergencyName.isEmpty ? nil : emergencyName,
-                    emergency_contact_phone: emergencyPhone.isEmpty ? nil : emergencyPhone,
-                    id_document_path: nil,
-                    archived_at: nil,
-                    created_at: now,
-                    updated_at: nil
+                    emergencyContactName: emergencyName.isEmpty ? nil : emergencyName,
+                    emergencyContactPhone: emergencyPhone.isEmpty ? nil : emergencyPhone,
+                    idDocumentPath: nil,
+                    archivedAt: nil,
+                    createdAt: now,
+                    updatedAt: nil
                 )
                 _ = try await APIService.shared.createClient(client: newClient)
                 onSaved()
@@ -191,26 +191,26 @@ struct ClientFormView: View {
 
             case .edit(let c):
                 let patch = APIService.ClientPatch(
-                    first_name: changed(firstName, c.first_name),
-                    last_name: changed(lastName, c.last_name),
+                    firstName: changed(firstName, c.firstName),
+                    lastName: changed(lastName, c.lastName),
                     email: changed(email, c.email),
                     phone: changed(phone, c.phone),
-                    date_of_birth: changed(dateOfBirth, c.date_of_birth),
+                    dateOfBirth: changed(dateOfBirth, c.dateOfBirth),
                     gender: changed(gender, c.gender),
-                    address_line1: changed(addressLine1, c.address_line1),
-                    address_line2: changed(addressLine2, c.address_line2),
+                    addressLine1: changed(addressLine1, c.addressLine1),
+                    addressLine2: changed(addressLine2, c.addressLine2),
                     city: changed(city, c.city),
-                    state_code: changed(stateCode, c.state_code),
-                    postal_code: changed(postalCode, c.postal_code),
-                    access_notes: changed(accessNotes, c.access_notes),
+                    stateCode: changed(stateCode, c.stateCode),
+                    postalCode: changed(postalCode, c.postalCode),
+                    accessNotes: changed(accessNotes, c.accessNotes),
                     allergies: changedArray(splitCSV(allergiesStr), c.allergies),
-                    medical_conditions: changedArray(splitCSV(medicalConditionsStr), c.medical_conditions),
+                    medicalConditions: changedArray(splitCSV(medicalConditionsStr), c.medicalConditions),
                     medications: changedArray(splitCSV(medicationsStr), c.medications),
-                    emergency_contact_name: changed(emergencyName, c.emergency_contact_name),
-                    emergency_contact_phone: changed(emergencyPhone, c.emergency_contact_phone)
+                    emergencyContactName: changed(emergencyName, c.emergencyContactName),
+                    emergencyContactPhone: changed(emergencyPhone, c.emergencyContactPhone)
                 )
                 let result = try await APIService.shared.updateClient(id: c.id, patch: patch)
-                if let n = result.synced_future_sessions, n > 0 {
+                if let n = result.syncedFutureSessions, n > 0 {
                     infoMessage = "\(n) session\(n > 1 ? "s" : "") future\(n > 1 ? "s" : "") resynchronisée\(n > 1 ? "s" : "")."
                     try? await Task.sleep(nanoseconds: 700_000_000)
                 }

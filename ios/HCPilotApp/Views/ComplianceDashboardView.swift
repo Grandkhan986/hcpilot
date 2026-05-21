@@ -13,14 +13,14 @@ struct ComplianceDashboardView: View {
                     ProgressView().frame(maxWidth: .infinity).padding(.vertical, 60)
                 } else if let dashboard = vm.dashboard {
                     LicenseCard(license: dashboard.license)
-                    MedicalDirectorCard(md: dashboard.medical_director)
+                    MedicalDirectorCard(md: dashboard.medicalDirector)
                     StandingOrdersCard(
-                        orders: dashboard.standing_orders,
-                        expiringSoon: dashboard.standing_orders_expiring_soon
+                        orders: dashboard.standingOrders,
+                        expiringSoon: dashboard.standingOrdersExpiringSoon
                     )
                     AlertsCard(
                         alerts: dashboard.alerts,
-                        unreadCount: dashboard.unread_alerts,
+                        unreadCount: dashboard.unreadAlerts,
                         onAcknowledge: { id in Task { await vm.acknowledge(id) } }
                     )
                 } else if let err = vm.errorMessage {
@@ -50,9 +50,9 @@ private struct LicenseCard: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(license.license_number ?? "—")
+                            Text(license.licenseNumber ?? "—")
                                 .font(.title3).fontWeight(.semibold)
-                            Text("\(license.license_type ?? "?") · \(license.state_code ?? "??")")
+                            Text("\(license.licenseType ?? "?") · \(license.stateCode ?? "??")")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -61,11 +61,11 @@ private struct LicenseCard: View {
                     }
                     Divider()
                     HStack(spacing: 16) {
-                        if let exp = license.expiration_date {
+                        if let exp = license.expirationDate {
                             Label("Expire le \(LicenseCard.dateFmt.string(from: exp))", systemImage: "calendar")
                                 .font(.caption)
                         }
-                        if let d = license.days_remaining {
+                        if let d = license.daysRemaining {
                             Label(remainingLabel(days: d), systemImage: "hourglass")
                                 .font(.caption)
                                 .foregroundStyle(colorForStatus(license.status))
@@ -102,27 +102,27 @@ private struct MedicalDirectorCard: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(md.full_name).font(.headline)
+                            Text(md.fullName).font(.headline)
                             Text(md.email).font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()
-                        if let s = md.contract_status {
+                        if let s = md.contractStatus {
                             StatusPill(status: s)
                         }
                     }
                     Divider()
                     HStack(spacing: 12) {
-                        if let endDate = md.contract_end_date {
+                        if let endDate = md.contractEndDate {
                             Label("Contrat jusqu'au \(endDate)", systemImage: "doc.text")
                                 .font(.caption)
                         }
                     }
-                    if let audit = md.next_audit_date {
+                    if let audit = md.nextAuditDate {
                         HStack(spacing: 8) {
                             Image(systemName: "calendar.badge.exclamationmark")
                             Text("Prochain audit : \(audit)")
                             Spacer()
-                            if let s = md.next_audit_status {
+                            if let s = md.nextAuditStatus {
                                 Text(statusLabel(s))
                                     .font(.caption2)
                                     .foregroundStyle(colorForStatus(s))
@@ -166,10 +166,10 @@ private struct StandingOrdersCard: View {
                         HStack {
                             Image(systemName: "circle.fill")
                                 .font(.system(size: 8))
-                                .foregroundStyle(colorForStatus(order.expiration_status ?? .ok))
+                                .foregroundStyle(colorForStatus(order.expirationStatus ?? .ok))
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(order.formulation_name).font(.subheadline)
-                                if let exp = order.expires_at {
+                                Text(order.formulationName).font(.subheadline)
+                                if let exp = order.expiresAt {
                                     Text("Expire le \(exp, style: .date)")
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
@@ -208,7 +208,7 @@ private struct AlertsCard: View {
                                 Text(alert.description).font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            if alert.acknowledged_at == nil {
+                            if alert.acknowledgedAt == nil {
                                 Button("Vu") { onAcknowledge(alert.id) }
                                     .font(.caption)
                                     .buttonStyle(.bordered)
