@@ -69,6 +69,21 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# API Versioning Middleware (audit H14).
+# Routes are registered at root (`/clients`, `/sessions`, etc.) but the iOS
+# app calls them under `/v1/...` so the public surface can evolve without
+# breaking pinned App Store builds. This middleware strips the `/v1` prefix
+# before FastAPI's router matches the path. Bare paths still work to keep the
+# existing pytest suite passing during the transition.
+@app.middleware("http")
+async def api_version_prefix(request: Request, call_next):
+    path = request.scope.get("path", "")
+    if path.startswith("/v1/"):
+        new_path = path[3:] or "/"
+        request.scope["path"] = new_path
+        request.scope["raw_path"] = new_path.encode()
+    return await call_next(request)
+
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,

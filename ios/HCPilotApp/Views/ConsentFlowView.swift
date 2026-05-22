@@ -411,6 +411,8 @@ final class ConsentFlowViewModel: ObservableObject {
             signedAt: Date(),
             latitude: coord?.latitude,
             longitude: coord?.longitude,
+            ipAddress: NetworkInfo.currentIPAddress(),
+            standingOrderVersion: standingOrder.version,
             deviceInfo: deviceInfo
         )
         let pdfData = ConsentPDFBuilder.build(pdfInput)

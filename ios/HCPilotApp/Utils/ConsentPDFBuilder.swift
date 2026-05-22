@@ -1,11 +1,47 @@
 import UIKit
 
-/// Génère le PDF d'un consentement signé via UIGraphicsPDFRenderer (PDFKit-friendly).
-/// Format US Letter (8.5 × 11 in). Pagination automatique si le texte déborde.
+/// Generates the PDF of a signed consent via UIGraphicsPDFRenderer (PDFKit-friendly).
+/// US Letter format (8.5 × 11 in). Automatic pagination when text overflows.
+///
+/// Audit C7/H21/H22/H23/H24 :
+/// - All labels in English (target market = US nurses).
+/// - HIPAA Notice of Privacy Practices section appended.
+/// - Standing order version + IP address surfaced in metadata.
+/// - Footer shows "Page X / Y" via two-pass rendering.
 enum ConsentPDFBuilder {
-    static let pageWidth: CGFloat = 612   // 8.5"
-    static let pageHeight: CGFloat = 792  // 11"
+    // MARK: - Layout constants
+    static let pageWidth: CGFloat = 612    // 8.5"
+    static let pageHeight: CGFloat = 792   // 11"
     static let margin: CGFloat = 48
+
+    private static let headerFontSize: CGFloat = 18
+    private static let identityFontSize: CGFloat = 13
+    private static let sectionTitleFontSize: CGFloat = 14
+    private static let bodyFontSize: CGFloat = 11
+    private static let metadataFontSize: CGFloat = 10
+    private static let footerFontSize: CGFloat = 9
+    private static let lineHeight: CGFloat = 18
+    private static let metadataLineHeight: CGFloat = 14
+    private static let signatureMaxHeight: CGFloat = 100
+    private static let signatureUnderlineWidth: CGFloat = 250
+
+    private static let bodyFont = UIFont.systemFont(ofSize: bodyFontSize)
+
+    /// HIPAA Notice of Privacy Practices summary. Brief §Compliance HIPAA.
+    /// Full notice typically lives on the practice website; this PDF references
+    /// the highlights so the signed copy is self-contained.
+    private static let hipaaNotice = """
+    This document is a medical record protected by the Health Insurance \
+    Portability and Accountability Act (HIPAA). The provider may use and \
+    disclose your protected health information (PHI) for treatment, payment, \
+    and healthcare operations as permitted by law. You have the right to: \
+    (1) access, inspect and obtain a copy of your PHI; (2) request amendments \
+    to your record; (3) receive an accounting of disclosures; (4) request \
+    restrictions on certain uses and disclosures; (5) file a complaint with \
+    the provider or the U.S. Department of Health & Human Services without \
+    fear of retaliation. A full Notice of Privacy Practices is available upon \
+    request from your provider.
+    """
 
     struct Input {
         let documentId: String
@@ -18,105 +54,217 @@ enum ConsentPDFBuilder {
         let signedAt: Date
         let latitude: Double?
         let longitude: Double?
+        let ipAddress: String?
+        let standingOrderVersion: Int?
         let deviceInfo: [String: String]
+    }
+
+    /// Shared rendering context — owns the running `y` cursor so helpers can
+    /// trigger page breaks without scattering inout params everywhere.
+    private final class RenderContext {
+        let pdf: UIGraphicsPDFRendererContext
+        let totalPages: Int
+        let documentId: String
+        var pageIndex: Int = 0
+        var y: CGFloat = margin
+
+        init(pdf: UIGraphicsPDFRendererContext, totalPages: Int, documentId: String) {
+            self.pdf = pdf
+            self.totalPages = totalPages
+            self.documentId = documentId
+        }
+
+        func startPage() {
+            if pageIndex > 0 {
+                drawFooter(documentId: documentId, page: pageIndex, total: totalPages)
+            }
+            pdf.beginPage()
+            pageIndex += 1
+            y = margin
+        }
+
+        func ensureRoom(_ needed: CGFloat) {
+            if y + needed > pageHeight - margin {
+                startPage()
+            }
+        }
     }
 
     static func build(_ input: Input) -> Data {
         let pageRect = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
         let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
-        return renderer.pdfData { ctx in
-            var y = margin
-            ctx.beginPage()
+        let totalPages = countPages(input: input)
 
-            y = drawHeader(input: input, ctx: ctx, y: y)
-            y = drawIdentity(input: input, y: y)
-            y = drawSectionTitle("Consentement", y: y, ctx: ctx)
-            y = drawWrappedText(input.consentText, y: y, font: bodyFont, ctx: ctx)
+        return renderer.pdfData { pdfCtx in
+            let ctx = RenderContext(pdf: pdfCtx, totalPages: totalPages, documentId: input.documentId)
+            ctx.startPage()
 
-            y = drawSectionTitle("Checkpoints validés", y: y + 12, ctx: ctx)
+            drawHeader(input: input, ctx: ctx)
+            drawIdentity(input: input, ctx: ctx)
+
+            drawSectionTitle("Informed Consent", ctx: ctx, topPadding: 0)
+            drawWrappedText(input.consentText, font: bodyFont, ctx: ctx)
+
+            drawSectionTitle("Acknowledged Checkpoints", ctx: ctx, topPadding: 12)
             for cp in input.checkpoints {
-                y = drawCheckpoint(cp, y: y, ctx: ctx)
+                drawCheckpoint(cp, ctx: ctx)
             }
 
-            y = drawSectionTitle("Signature", y: y + 16, ctx: ctx)
-            y = drawSignature(input.signatureImage, y: y, ctx: ctx)
+            drawSectionTitle("Signature", ctx: ctx, topPadding: 16)
+            drawSignature(input.signatureImage, ctx: ctx)
 
-            y = drawSectionTitle("Métadonnées", y: y + 12, ctx: ctx)
-            y = drawMetadata(input: input, y: y, ctx: ctx)
+            drawSectionTitle("Metadata", ctx: ctx, topPadding: 12)
+            drawMetadata(input: input, ctx: ctx)
 
-            drawFooter(documentId: input.documentId, ctx: ctx)
+            drawSectionTitle("Notice of Privacy Practices (HIPAA)", ctx: ctx, topPadding: 12)
+            drawWrappedText(hipaaNotice, font: bodyFont, ctx: ctx)
+
+            drawFooter(documentId: input.documentId, page: ctx.pageIndex, total: totalPages)
         }
+    }
+
+    // MARK: - Page counting
+
+    /// Mirrors the rendering geometry exactly, but draws nothing. Used to pre-
+    /// compute total pages so the footer can show "Page X / Y". Keep the
+    /// arithmetic in sync with the draw* helpers below.
+    private static func countPages(input: Input) -> Int {
+        var page = 1
+        var y = margin
+        let usableWidth = pageWidth - 2 * margin
+        let attrs: [NSAttributedString.Key: Any] = [.font: bodyFont]
+
+        func feed(_ needed: CGFloat) {
+            if y + needed > pageHeight - margin {
+                page += 1
+                y = margin
+            }
+        }
+
+        func wrappedHeight(_ text: String) -> CGFloat {
+            var total: CGFloat = 0
+            for para in text.components(separatedBy: "\n") {
+                let p = (para.isEmpty ? " " : para) as NSString
+                total += ceil(p.boundingRect(
+                    with: CGSize(width: usableWidth, height: .greatestFiniteMagnitude),
+                    options: [.usesLineFragmentOrigin, .usesFontLeading],
+                    attributes: attrs,
+                    context: nil
+                ).height) + 4
+            }
+            return total + 6
+        }
+
+        // Header + identity
+        y += 60
+        y += lineHeight * 3 + 8
+
+        // Informed Consent
+        feed(30); y += 22
+        let consentH = wrappedHeight(input.consentText)
+        for chunk in splitForPagination(totalHeight: consentH, lineApprox: lineHeight, usableHeight: pageHeight - margin) {
+            feed(chunk); y += chunk
+        }
+
+        // Checkpoints
+        feed(30); y += 22
+        for _ in input.checkpoints {
+            feed(24); y += 20
+        }
+
+        // Signature
+        feed(30 + signatureMaxHeight + 10); y += 22
+        y += signatureMaxHeight + 12
+
+        // Metadata
+        feed(30); y += 22
+        let metadataLines = 4
+            + input.deviceInfo.count
+            + (input.ipAddress == nil ? 0 : 1)
+            + (input.standingOrderVersion == nil ? 0 : 1)
+        for _ in 0..<metadataLines {
+            feed(metadataLineHeight + 2); y += metadataLineHeight
+        }
+
+        // HIPAA
+        feed(30); y += 22
+        let noticeH = wrappedHeight(hipaaNotice)
+        for chunk in splitForPagination(totalHeight: noticeH, lineApprox: lineHeight, usableHeight: pageHeight - margin) {
+            feed(chunk); y += chunk
+        }
+
+        return max(page, 1)
+    }
+
+    /// Splits a tall block into per-line increments so the page-counter "feed"
+    /// can break at line boundaries the same way the real renderer does.
+    private static func splitForPagination(totalHeight: CGFloat, lineApprox: CGFloat, usableHeight: CGFloat) -> [CGFloat] {
+        var out: [CGFloat] = []
+        var remaining = totalHeight
+        let step = max(lineApprox, 14)
+        while remaining > step {
+            out.append(step)
+            remaining -= step
+        }
+        if remaining > 0 { out.append(remaining) }
+        return out
     }
 
     // MARK: - Sections
 
-    private static func drawHeader(input: Input, ctx: UIGraphicsPDFRendererContext, y: CGFloat) -> CGFloat {
-        let title = "HCPilot — Consentement éclairé"
-        title.draw(at: CGPoint(x: margin, y: y), withAttributes: [
-            .font: UIFont.boldSystemFont(ofSize: 18),
+    private static func drawHeader(input: Input, ctx: RenderContext) {
+        let title = "HCPilot — Informed Consent"
+        title.draw(at: CGPoint(x: margin, y: ctx.y), withAttributes: [
+            .font: UIFont.boldSystemFont(ofSize: headerFontSize),
             .foregroundColor: UIColor.black,
         ])
-        let nurse = "Soignant : \(input.nurseName)"
-        nurse.draw(at: CGPoint(x: margin, y: y + 24), withAttributes: [
+        let provider = "Provider: \(input.nurseName)"
+        provider.draw(at: CGPoint(x: margin, y: ctx.y + 24), withAttributes: [
             .font: UIFont.systemFont(ofSize: 12),
             .foregroundColor: UIColor.darkGray,
         ])
-        // Ligne de séparation
         let line = UIBezierPath()
-        line.move(to: CGPoint(x: margin, y: y + 46))
-        line.addLine(to: CGPoint(x: pageWidth - margin, y: y + 46))
+        line.move(to: CGPoint(x: margin, y: ctx.y + 46))
+        line.addLine(to: CGPoint(x: pageWidth - margin, y: ctx.y + 46))
         UIColor.lightGray.setStroke()
         line.lineWidth = 0.5
         line.stroke()
-        return y + 60
+        ctx.y += 60
     }
 
-    private static func drawIdentity(input: Input, y: CGFloat) -> CGFloat {
+    private static func drawIdentity(input: Input, ctx: RenderContext) {
         let lines = [
-            "Client : \(input.clientName)",
-            "Formulation : \(input.formulationName)",
-            "Signé le : \(formattedDate(input.signedAt))",
+            "Client: \(input.clientName)",
+            "Formulation: \(input.formulationName)",
+            "Signed on: \(formattedDate(input.signedAt))",
         ]
-        var yy = y
         for line in lines {
-            line.draw(at: CGPoint(x: margin, y: yy), withAttributes: [
-                .font: UIFont.systemFont(ofSize: 13),
+            line.draw(at: CGPoint(x: margin, y: ctx.y), withAttributes: [
+                .font: UIFont.systemFont(ofSize: identityFontSize),
                 .foregroundColor: UIColor.black,
             ])
-            yy += 18
+            ctx.y += lineHeight
         }
-        return yy + 8
+        ctx.y += 8
     }
 
-    private static func drawSectionTitle(_ title: String, y: CGFloat, ctx: UIGraphicsPDFRendererContext) -> CGFloat {
-        var yy = y
-        if yy + 30 > pageHeight - margin {
-            ctx.beginPage()
-            yy = margin
-        }
-        title.draw(at: CGPoint(x: margin, y: yy), withAttributes: [
-            .font: UIFont.boldSystemFont(ofSize: 14),
+    private static func drawSectionTitle(_ title: String, ctx: RenderContext, topPadding: CGFloat) {
+        ctx.y += topPadding
+        ctx.ensureRoom(30)
+        title.draw(at: CGPoint(x: margin, y: ctx.y), withAttributes: [
+            .font: UIFont.boldSystemFont(ofSize: sectionTitleFontSize),
             .foregroundColor: UIColor.black,
         ])
-        return yy + 22
+        ctx.y += 22
     }
 
-    private static let bodyFont = UIFont.systemFont(ofSize: 11)
-
-    private static func drawWrappedText(
-        _ text: String,
-        y: CGFloat,
-        font: UIFont,
-        ctx: UIGraphicsPDFRendererContext
-    ) -> CGFloat {
-        let paragraphs = text.components(separatedBy: "\n")
-        var yy = y
+    private static func drawWrappedText(_ text: String, font: UIFont, ctx: RenderContext) {
         let usableWidth = pageWidth - 2 * margin
         let attrs: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: UIColor.black,
         ]
-        for para in paragraphs {
+        for para in text.components(separatedBy: "\n") {
             let p = (para.isEmpty ? " " : para) as NSString
             let bounding = p.boundingRect(
                 with: CGSize(width: usableWidth, height: .greatestFiniteMagnitude),
@@ -125,122 +273,106 @@ enum ConsentPDFBuilder {
                 context: nil
             )
             let height = ceil(bounding.height) + 4
-            if yy + height > pageHeight - margin {
-                ctx.beginPage()
-                yy = margin
-            }
+            ctx.ensureRoom(height)
             p.draw(
-                with: CGRect(x: margin, y: yy, width: usableWidth, height: height),
+                with: CGRect(x: margin, y: ctx.y, width: usableWidth, height: height),
                 options: [.usesLineFragmentOrigin, .usesFontLeading],
                 attributes: attrs,
                 context: nil
             )
-            yy += height
+            ctx.y += height
         }
-        return yy + 6
+        ctx.y += 6
     }
 
-    private static func drawCheckpoint(
-        _ cp: ConsentCheckpoint,
-        y: CGFloat,
-        ctx: UIGraphicsPDFRendererContext
-    ) -> CGFloat {
-        var yy = y
-        if yy + 24 > pageHeight - margin {
-            ctx.beginPage()
-            yy = margin
-        }
-        // Carré coché
-        let box = UIBezierPath(rect: CGRect(x: margin, y: yy + 2, width: 12, height: 12))
+    private static func drawCheckpoint(_ cp: ConsentCheckpoint, ctx: RenderContext) {
+        ctx.ensureRoom(24)
+        let box = UIBezierPath(rect: CGRect(x: margin, y: ctx.y + 2, width: 12, height: 12))
         UIColor.black.setStroke()
         box.lineWidth = 1
         box.stroke()
         if cp.accepted {
             let check = "✓" as NSString
-            check.draw(at: CGPoint(x: margin + 1, y: yy - 2), withAttributes: [
+            check.draw(at: CGPoint(x: margin + 1, y: ctx.y - 2), withAttributes: [
                 .font: UIFont.boldSystemFont(ofSize: 14),
                 .foregroundColor: UIColor.black,
             ])
         }
         let label = cp.label as NSString
-        label.draw(at: CGPoint(x: margin + 22, y: yy + 1), withAttributes: [
-            .font: UIFont.systemFont(ofSize: 11),
+        label.draw(at: CGPoint(x: margin + 22, y: ctx.y + 1), withAttributes: [
+            .font: UIFont.systemFont(ofSize: bodyFontSize),
             .foregroundColor: UIColor.black,
         ])
-        return yy + 20
+        ctx.y += 20
     }
 
-    private static func drawSignature(
-        _ image: UIImage,
-        y: CGFloat,
-        ctx: UIGraphicsPDFRendererContext
-    ) -> CGFloat {
-        let maxHeight: CGFloat = 100
+    private static func drawSignature(_ image: UIImage, ctx: RenderContext) {
         let maxWidth: CGFloat = pageWidth - 2 * margin
         let ratio = image.size.width / max(image.size.height, 1)
         var width = maxWidth
         var height = width / max(ratio, 0.001)
-        if height > maxHeight {
-            height = maxHeight
+        if height > signatureMaxHeight {
+            height = signatureMaxHeight
             width = height * ratio
         }
-        var yy = y
-        if yy + height + 10 > pageHeight - margin {
-            ctx.beginPage()
-            yy = margin
-        }
-        image.draw(in: CGRect(x: margin, y: yy, width: width, height: height))
-        // Trait sous la signature
+        ctx.ensureRoom(height + 12)
+        image.draw(in: CGRect(x: margin, y: ctx.y, width: width, height: height))
         let line = UIBezierPath()
-        line.move(to: CGPoint(x: margin, y: yy + height + 2))
-        line.addLine(to: CGPoint(x: margin + 250, y: yy + height + 2))
+        line.move(to: CGPoint(x: margin, y: ctx.y + height + 2))
+        line.addLine(to: CGPoint(x: margin + signatureUnderlineWidth, y: ctx.y + height + 2))
         UIColor.darkGray.setStroke()
         line.lineWidth = 0.5
         line.stroke()
-        return yy + height + 12
+        ctx.y += height + 12
     }
 
-    private static func drawMetadata(
-        input: Input,
-        y: CGFloat,
-        ctx: UIGraphicsPDFRendererContext
-    ) -> CGFloat {
+    private static func drawMetadata(input: Input, ctx: RenderContext) {
         var lines: [String] = []
-        lines.append("Horodatage : \(formattedDate(input.signedAt))")
+        lines.append("Timestamp: \(formattedDate(input.signedAt))")
         if let lat = input.latitude, let lng = input.longitude {
-            lines.append(String(format: "Géolocalisation : %.5f, %.5f", lat, lng))
+            lines.append(String(format: "Geolocation: %.5f, %.5f", lat, lng))
         } else {
-            lines.append("Géolocalisation : non disponible")
+            lines.append("Geolocation: not available")
         }
+        if let ip = input.ipAddress, !ip.isEmpty {
+            lines.append("IP address: \(ip)")
+        }
+        if let v = input.standingOrderVersion {
+            lines.append("Standing Order version: v\(v)")
+        }
+        lines.append("Document ID: \(input.documentId)")
         for (k, v) in input.deviceInfo.sorted(by: { $0.key < $1.key }) {
-            lines.append("Device.\(k) : \(v)")
+            lines.append("Device.\(k): \(v)")
         }
-        var yy = y
         for line in lines {
-            if yy + 16 > pageHeight - margin {
-                ctx.beginPage()
-                yy = margin
-            }
-            line.draw(at: CGPoint(x: margin, y: yy), withAttributes: [
-                .font: UIFont.systemFont(ofSize: 10),
+            ctx.ensureRoom(metadataLineHeight + 2)
+            line.draw(at: CGPoint(x: margin, y: ctx.y), withAttributes: [
+                .font: UIFont.systemFont(ofSize: metadataFontSize),
                 .foregroundColor: UIColor.darkGray,
             ])
-            yy += 14
+            ctx.y += metadataLineHeight
         }
-        return yy
     }
 
-    private static func drawFooter(documentId: String, ctx: UIGraphicsPDFRendererContext) {
-        let text = "Document ID : \(documentId)" as NSString
-        text.draw(at: CGPoint(x: margin, y: pageHeight - margin + 12), withAttributes: [
-            .font: UIFont.systemFont(ofSize: 9),
+    private static func drawFooter(documentId: String, page: Int, total: Int) {
+        let left = "Document ID: \(documentId)" as NSString
+        let right = "Page \(page) / \(total)" as NSString
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: footerFontSize),
             .foregroundColor: UIColor.gray,
-        ])
+        ]
+        let footerY = pageHeight - margin + 12
+        left.draw(at: CGPoint(x: margin, y: footerY), withAttributes: attrs)
+        let rightSize = right.size(withAttributes: attrs)
+        right.draw(
+            at: CGPoint(x: pageWidth - margin - rightSize.width, y: footerY),
+            withAttributes: attrs
+        )
     }
 
     private static func formattedDate(_ date: Date) -> String {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "fr_FR")
+        f.locale = Locale(identifier: "en_US")
         f.dateStyle = .full
         f.timeStyle = .medium
         return f.string(from: date)
