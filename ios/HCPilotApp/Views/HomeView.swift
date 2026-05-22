@@ -4,6 +4,9 @@ import MapKit
 struct HomeView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var viewModel = HomeViewModel()
+    @State private var selectedStockItem: LowStockProduct?
+    @State private var navigateToInventoryProduct: String?
+    @State private var navigateToCompliance: Bool = false
 
     // Brief §Dashboard : "auto-refresh 60s en foreground" — Timer publié toutes
     // les 60s. SwiftUI suspend automatiquement les Timer.publish quand l'app
@@ -11,163 +14,26 @@ struct HomeView: View {
     private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    // Header
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text("Bonjour, \(viewModel.userName)")
-                                .font(.headline)
-                            Text("Aujourd'hui, \(Date.now, formatter: viewModel.dateFormatter)")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-
-                    if let errorMessage = viewModel.errorMessage {
-                        Text(errorMessage)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                            .padding(.horizontal)
-                    }
-
-                    // Stats Cards
-                    LazyVGrid(columns: [
-                        GridItem(.flexible()),
-                        GridItem(.flexible())
-                    ], spacing: 16) {
-                        StatCard(
-                            title: "Revenu du mois",
-                            value: String(format: "%.0f €", viewModel.monthlyRevenue),
-                            icon: "eurosign.circle",
-                            color: .green
-                        )
-                        StatCard(
-                            title: "Sessions du jour",
-                            value: "\(viewModel.todaySessionsCount)",
-                            icon: "person.2.circle",
-                            color: .blue
-                        )
-                    }
-                    .padding(.horizontal)
-
-                    // Today's Route Map
-                    if !viewModel.routeStops.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Ma Journée")
-                                .font(.headline)
-
-                            NavigationLink(destination: RouteMapView()) {
-                                RouteMapContent(
-                                    stops: viewModel.routeStops,
-                                    polylineCoordinates: viewModel.polylineCoordinates,
-                                    cameraPosition: .constant(.region(
-                                        RouteMapView.region(for: viewModel.routeStops)
-                                    ))
-                                )
-                                .frame(height: 180)
-                                .cornerRadius(12)
-                                .allowsHitTesting(false)
-                                .overlay(alignment: .topTrailing) {
-                                    Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                        .font(.caption)
-                                        .padding(8)
-                                        .background(.regularMaterial)
-                                        .clipShape(Circle())
-                                        .padding(8)
-                                }
-                            }
-                            .buttonStyle(.plain)
-
-                            SessionLifecycleButton(
-                                session: viewModel.nextActiveSession,
-                                onStart: { viewModel.startSession($0) },
-                                onComplete: { viewModel.completeSession($0) }
-                            )
-                        }
-                        .padding(.horizontal)
-                    } else if viewModel.nextActiveSession != nil {
-                        // Sessions du jour sans coordonnées (cas edge) : on garde le bouton lifecycle
-                        // pour ne pas perdre la fonctionnalité "Commencer/Terminer".
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Ma Journée")
-                                .font(.headline)
-                            SessionLifecycleButton(
-                                session: viewModel.nextActiveSession,
-                                onStart: { viewModel.startSession($0) },
-                                onComplete: { viewModel.completeSession($0) }
-                            )
-                        }
-                        .padding(.horizontal)
-                    }
-
-                    // Upcoming Sessions
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Sessions à venir")
-                                .font(.headline)
-                            Spacer()
-                            NavigationLink("Tout voir") {
-                                SessionsListView()
-                            }
-                            .font(.caption)
-                        }
-
-                        if viewModel.upcomingSessions.isEmpty {
-                            VStack(spacing: 16) {
-                                Image(systemName: "calendar.circle")
-                                    .font(.largeTitle)
-                                    .foregroundStyle(.gray)
-                                Text("Aucune session prévue")
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 40)
-                        } else {
-                            ForEach(viewModel.upcomingSessions) { session in
-                                SessionListItem(session: session)
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-
-                    // Stock Status
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Statut du Stock")
-                                .font(.headline)
-                            if viewModel.lowStockCount > 0 {
-                                Text("\(viewModel.lowStockCount) items faibles")
-                                    .font(.caption)
-                                    .foregroundStyle(.red)
-                            }
-                        }
-
-                        if viewModel.stockItems.isEmpty {
-                            Text("Stock en ordre")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.top, 8)
-                        } else {
-                            HStack(spacing: 12) {
-                                ForEach(viewModel.stockItems.prefix(3)) { item in
-                                    StockStatusCard(item: item)
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.bottom, 20)
+                    header
+                    kpiRow
+                    routeMapSection
+                    todaySection
+                    upcomingSection
+                    stockSection
                 }
+                .padding(.bottom, 20)
             }
             .navigationBarHidden(true)
-            .refreshable {
-                viewModel.refresh()
+            .navigationDestination(isPresented: $navigateToCompliance) {
+                ComplianceDashboardView()
             }
+            .navigationDestination(item: $navigateToInventoryProduct) { productName in
+                InventoryDetailView(productName: productName)
+            }
+            .refreshable { viewModel.refresh() }
             .onAppear {
                 viewModel.setUser(authViewModel.user)
                 viewModel.load()
@@ -175,52 +41,314 @@ struct HomeView: View {
             .onReceive(refreshTimer) { _ in
                 viewModel.refresh()
             }
+            .sheet(item: $selectedStockItem) { item in
+                LowStockSheet(item: item) {
+                    navigateToInventoryProduct = item.productName
+                }
+            }
         }
+    }
+
+    // MARK: - Header
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(viewModel.timeOfDayGreeting), \(viewModel.displayName)")
+                        .font(.headline)
+                    Text(Date.now, formatter: viewModel.dateFormatter)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                SyncStatusBadge(isSyncing: viewModel.isSyncing)
+            }
+            if let errorMessage = viewModel.errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.top, 8)
+    }
+
+    // MARK: - KPI row (3 tiles compactes)
+
+    private var kpiRow: some View {
+        LazyVGrid(columns: [
+            GridItem(.flexible()),
+            GridItem(.flexible()),
+            GridItem(.flexible())
+        ], spacing: 10) {
+            StatCard(
+                title: "Revenu mois",
+                value: String(format: "%.0f €", viewModel.monthlyRevenue),
+                icon: "eurosign.circle",
+                color: .green
+            )
+            StatCard(
+                title: "Sessions jour",
+                value: "\(viewModel.todaySessionsCount)",
+                icon: "person.2.circle",
+                color: .blue
+            )
+            Button { navigateToCompliance = true } label: {
+                ComplianceTile(
+                    status: viewModel.complianceStatus,
+                    issueCount: viewModel.complianceIssueCount
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal)
+    }
+
+    // MARK: - Carte itinéraire
+
+    @ViewBuilder
+    private var routeMapSection: some View {
+        if !viewModel.routeStops.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Ma Journée")
+                    .font(.headline)
+
+                NavigationLink(destination: RouteMapView()) {
+                    RouteMapContent(
+                        stops: viewModel.routeStops,
+                        polylineCoordinates: viewModel.polylineCoordinates,
+                        cameraPosition: .constant(.region(
+                            RouteMapView.region(for: viewModel.routeStops)
+                        ))
+                    )
+                    .frame(height: 300)
+                    .cornerRadius(12)
+                    .allowsHitTesting(false)
+                    .overlay(alignment: .topTrailing) {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .font(.caption)
+                            .padding(8)
+                            .background(.regularMaterial)
+                            .clipShape(Circle())
+                            .padding(8)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                ContextualStartButton(state: viewModel.startButtonState) { session in
+                    viewModel.startSession(session)
+                }
+            }
+            .padding(.horizontal)
+        } else if viewModel.nextActiveSession != nil {
+            // Sessions du jour sans coordonnées (cas edge) : on garde le bouton lifecycle
+            // pour ne pas perdre la fonctionnalité "Commencer/Terminer".
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Ma Journée")
+                    .font(.headline)
+                ContextualStartButton(state: viewModel.startButtonState) { session in
+                    viewModel.startSession(session)
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    // MARK: - Today section (brief §refonte Home — split)
+
+    @ViewBuilder
+    private var todaySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Aujourd'hui")
+                .font(.headline)
+
+            if viewModel.todaySessions.isEmpty {
+                emptyTodayCard
+            } else {
+                ForEach(viewModel.todaySessions) { session in
+                    SessionListItem(session: session)
+                }
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    private var emptyTodayCard: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "calendar")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            Text("Aucune session aujourd'hui")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            NavigationLink(destination: SessionsListView()) {
+                Text("Voir le planning")
+                    .font(.caption.weight(.semibold))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+    }
+
+    // MARK: - Upcoming section
+
+    @ViewBuilder
+    private var upcomingSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Sessions à venir")
+                    .font(.headline)
+                Spacer()
+                NavigationLink("Tout voir") { SessionsListView() }
+                    .font(.caption)
+            }
+
+            if viewModel.upcomingSessions.isEmpty {
+                if viewModel.todaySessions.isEmpty {
+                    // Cas "totalement vide" — proposer une action constructive
+                    emptyUpcomingFullCard
+                } else {
+                    emptyUpcomingShortCard
+                }
+            } else {
+                ForEach(viewModel.upcomingSessions) { session in
+                    SessionListItem(session: session)
+                }
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    private var emptyUpcomingShortCard: some View {
+        Text("Aucune session planifiée pour les prochains jours.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 8)
+    }
+
+    private var emptyUpcomingFullCard: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "calendar.badge.plus")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+            Text("Aucune session planifiée.")
+                .font(.subheadline)
+            Text("Profitez-en pour gérer votre stock ou consulter votre conformité.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+    }
+
+    // MARK: - Stock
+
+    @ViewBuilder
+    private var stockSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Statut du stock")
+                    .font(.headline)
+                if viewModel.lowStockCount > 0 {
+                    Text("\(viewModel.lowStockCount) items faibles")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
+
+            if viewModel.stockItems.isEmpty {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                    Text("Stock OK").font(.subheadline).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 8)
+            } else {
+                HStack(spacing: 12) {
+                    ForEach(viewModel.stockItems.prefix(3)) { item in
+                        Button { selectedStockItem = item } label: {
+                            StockStatusCard(item: item)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal)
     }
 }
 
-/// Bouton de cycle de vie d'une session. En `scheduled` : action inline
-/// "Commencer". En `in_progress` : navigation vers le détail (où la sheet
-/// LotUsageSheet capture le lot avant de clôturer). Affiche un compteur live.
-struct SessionLifecycleButton: View {
-    let session: Session?
+// MARK: - Bouton « Commencer/Continuer/Terminé » contextualisé (brief §refonte Home)
+
+struct ContextualStartButton: View {
+    let state: HomeViewModel.StartButtonState
     let onStart: (Session) -> Void
-    let onComplete: (Session) -> Void  // conservé pour compat, non utilisé en in_progress
 
     var body: some View {
-        if let session, session.status == .inProgress {
-            VStack(spacing: 6) {
-                if let startedAt = session.startedAt {
-                    HStack(spacing: 4) {
-                        Image(systemName: "clock.fill")
-                            .font(.caption2)
-                        Text("En cours depuis")
-                            .font(.caption2)
-                        Text(startedAt, style: .timer)
-                            .font(.caption2.monospacedDigit())
-                    }
-                    .foregroundStyle(.secondary)
-                }
-                NavigationLink {
-                    SessionDetailView(session: session, onAction: {})
-                } label: {
-                    Text("Terminer la session")
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(Color.green)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-                }
-            }
-        } else {
-            Button("Commencer") {
-                if let session { onStart(session) }
+        switch state {
+        case .startDay(let session):
+            Button("Commencer la journée") {
+                onStart(session)
             }
             .frame(maxWidth: .infinity)
             .buttonStyle(PrimaryButtonStyle())
-            .disabled(session == nil)
-            .opacity(session == nil ? 0.5 : 1)
+
+        case .continueSession(let session, let name):
+            NavigationLink {
+                SessionDetailView(session: session, onAction: {})
+            } label: {
+                VStack(spacing: 4) {
+                    if let started = session.startedAt {
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock.fill").font(.caption2)
+                            Text("En cours depuis").font(.caption2)
+                            Text(started, style: .timer).font(.caption2.monospacedDigit())
+                        }
+                        .foregroundStyle(.white.opacity(0.85))
+                    }
+                    Text("Continuer la session de \(name ?? "Client")")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.orange)
+                .foregroundColor(.white)
+                .cornerRadius(8)
+            }
+
+        case .dayCompleted:
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill")
+                Text("Journée terminée")
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Color.green)
+            .cornerRadius(8)
+
+        case .noSessionToday:
+            NavigationLink(destination: SessionsListView()) {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus.circle")
+                    Text("Planifier une session")
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color(.systemGray5))
+                .foregroundColor(.primary)
+                .cornerRadius(8)
+            }
         }
     }
 }

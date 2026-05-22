@@ -530,12 +530,37 @@ MOCK_CLIENTS = [
         "id_document_path": None,
         "created_at": "2024-04-05T08:30:00", "updated_at": "2024-06-20T16:00:00"
     },
+    {
+        "id": "pat_004", "nurse_id": "usr_001",
+        "first_name": "Camille", "last_name": "Rousseau",
+        "email": "c.rousseau@email.com", "phone": "06 44 55 66 77",
+        "date_of_birth": "1988-09-12", "gender": "F",
+        "address_line1": "23 Rue Saint-Honoré", "address_line2": None,
+        "city": "Paris", "state_code": "CA", "postal_code": "75001",
+        "access_notes": "Digicode 8421A. Bâtiment B, escalier C.",
+        "latitude": 48.8638, "longitude": 2.3370,
+        "allergies": [],
+        "medical_conditions": ["Migraines chroniques"],
+        "medications": ["Magnésium 300mg", "Coenzyme Q10"],
+        "emergency_contact_name": "Thomas Rousseau (conjoint)",
+        "emergency_contact_phone": "06 33 22 11 00",
+        "id_document_path": None,
+        "created_at": "2025-01-20T09:00:00", "updated_at": "2025-08-12T11:00:00"
+    },
 ]
+
+# Helper : génère un timestamp "aujourd'hui à HH:MM" dans la timezone locale du
+# serveur (avec offset explicite dans l'ISO). Sans offset, le client iOS décode
+# naïvement comme UTC → bug visible où les sessions s'affichent à 21h/2h du mat
+# selon le fuseau du device. Brief §refonte Home — "données seed crédibles".
+def _today_at(hour: int, minute: int = 0) -> str:
+    now = datetime.now().astimezone()
+    return now.replace(hour=hour, minute=minute, second=0, microsecond=0).isoformat()
 
 MOCK_SESSIONS = [
     {
         "id": "vis_001", "client_id": "pat_001", "nurse_id": "usr_001",
-        "scheduled_at": datetime.now().replace(hour=9, minute=0).isoformat(),
+        "scheduled_at": _today_at(9, 0),
         "formulation_name": "Myers Cocktail", "status": "scheduled",
         "formulation_inventory_id": None,
         "address": "12 Rue de la Paix, 75002 Paris",
@@ -552,7 +577,7 @@ MOCK_SESSIONS = [
     },
     {
         "id": "vis_002", "client_id": "pat_002", "nurse_id": "usr_001",
-        "scheduled_at": datetime.now().replace(hour=11, minute=0).isoformat(),
+        "scheduled_at": _today_at(11, 30),
         "formulation_name": "NAD+ 250mg", "status": "scheduled",
         "formulation_inventory_id": None,
         "address": "45 Avenue Victor Hugo, 75016 Paris",
@@ -568,8 +593,25 @@ MOCK_SESSIONS = [
         "created_at": "2024-06-01T08:00:00", "updated_at": "2024-06-01T08:00:00"
     },
     {
-        "id": "vis_003", "client_id": "pat_003", "nurse_id": "usr_001",
-        "scheduled_at": datetime.now().replace(hour=14, minute=30).isoformat(),
+        "id": "vis_003", "client_id": "pat_004", "nurse_id": "usr_001",
+        "scheduled_at": _today_at(14, 30),
+        "formulation_name": "Vitamin Boost", "status": "scheduled",
+        "formulation_inventory_id": None,
+        "address": "23 Rue Saint-Honoré, 75001 Paris",
+        "latitude": 48.8638, "longitude": 2.3370,
+        "estimated_duration": 45,
+        "iv_start_time": None, "iv_end_time": None,
+        "pre_vitals": None, "during_vitals": None, "post_vitals": None,
+        "drip_rate": None,
+        "clinical_notes": "Cure vitamines + magnésium pour migraines récurrentes.",
+        "photos_paths": [],
+        "total_amount": 145.00,
+        "cancelled_at": None, "cancellation_reason": None,
+        "created_at": "2024-06-01T08:00:00", "updated_at": "2024-06-01T08:00:00"
+    },
+    {
+        "id": "vis_004", "client_id": "pat_003", "nurse_id": "usr_001",
+        "scheduled_at": _today_at(17, 0),
         "formulation_name": "NAD+ 500mg", "status": "scheduled",
         "formulation_inventory_id": None,
         "address": "8 Boulevard Haussmann, 75009 Paris",
