@@ -462,7 +462,10 @@ MOCK_USERS = {
         "id": "usr_001",
         "email": "doctor@hcpilot.com",
         "password": "password123",
-        "full_name": "Dr. Marie Dupont",
+        # license_type = RN → pas de préfixe « Dr. » dans full_name. La cible
+        # majoritaire HCPilot, ce sont les RN ; le préfixe Dr/Dr. est appliqué
+        # côté UI seulement pour MD/DO (cf. HomeViewModel.displayName).
+        "full_name": "Marie Dupont",
         "role": "provider",
         "specialty": "Médecine générale",
         # Champs compliance US (brief HCPilot — RN/NP indépendantes US)

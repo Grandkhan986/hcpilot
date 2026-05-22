@@ -54,6 +54,9 @@ struct ProfileView: View {
                         NavigationLink(destination: SecuritySettingsView()) {
                             ProfileMenuRow(icon: "lock.shield.fill", title: "Sécurité")
                         }
+                        NavigationLink(destination: SupplierSettingsView()) {
+                            ProfileMenuRow(icon: "cart", title: "Fournisseur (réappro)")
+                        }
                         NavigationLink(destination: MutationQueueView()) {
                             HStack {
                                 Image(systemName: "arrow.triangle.2.circlepath")

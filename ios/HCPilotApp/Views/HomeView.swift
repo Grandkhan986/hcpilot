@@ -82,18 +82,26 @@ struct HomeView: View {
             GridItem(.flexible()),
             GridItem(.flexible())
         ], spacing: 10) {
-            StatCard(
-                title: "Revenu mois",
-                value: String(format: "%.0f €", viewModel.monthlyRevenue),
-                icon: "eurosign.circle",
-                color: .green
-            )
-            StatCard(
-                title: "Sessions jour",
-                value: "\(viewModel.todaySessionsCount)",
-                icon: "person.2.circle",
-                color: .blue
-            )
+            NavigationLink(destination: ReportsView()) {
+                StatCard(
+                    title: "Revenu",
+                    value: String(format: "%.0f €", viewModel.monthlyRevenue),
+                    icon: "eurosign.circle",
+                    color: .green
+                )
+            }
+            .buttonStyle(.plain)
+
+            NavigationLink(destination: SessionsListView()) {
+                StatCard(
+                    title: "Sessions",
+                    value: "\(viewModel.todaySessionsCount)",
+                    icon: "person.2.circle",
+                    color: .blue
+                )
+            }
+            .buttonStyle(.plain)
+
             Button { navigateToCompliance = true } label: {
                 ComplianceTile(
                     status: viewModel.complianceStatus,
@@ -114,31 +122,41 @@ struct HomeView: View {
                 Text("Ma Journée")
                     .font(.headline)
 
-                NavigationLink(destination: RouteMapView()) {
-                    RouteMapContent(
-                        stops: viewModel.routeStops,
-                        polylineCoordinates: viewModel.polylineCoordinates,
-                        cameraPosition: .constant(.region(
-                            RouteMapView.region(for: viewModel.routeStops)
-                        ))
-                    )
-                    .frame(height: 300)
-                    .cornerRadius(12)
-                    .allowsHitTesting(false)
-                    .overlay(alignment: .topTrailing) {
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            .font(.caption)
-                            .padding(8)
-                            .background(.regularMaterial)
-                            .clipShape(Circle())
-                            .padding(8)
+                // Carte + bouton soudés visuellement (brief §refonte Home —
+                // patch 5). Le bouton se trouve dans le même conteneur clippé,
+                // collé en bas de la carte. Cela évite l'effet « flottant » et
+                // donne un bloc cohérent.
+                VStack(spacing: 0) {
+                    NavigationLink(destination: RouteMapView()) {
+                        RouteMapContent(
+                            stops: viewModel.routeStops,
+                            polylineCoordinates: viewModel.polylineCoordinates,
+                            cameraPosition: .constant(.region(
+                                RouteMapView.region(for: viewModel.routeStops)
+                            ))
+                        )
+                        .frame(height: 300)
+                        .allowsHitTesting(false)
+                        .overlay(alignment: .topTrailing) {
+                            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                .font(.caption)
+                                .padding(8)
+                                .background(.regularMaterial)
+                                .clipShape(Circle())
+                                .padding(8)
+                        }
                     }
-                }
-                .buttonStyle(.plain)
+                    .buttonStyle(.plain)
 
-                ContextualStartButton(state: viewModel.startButtonState) { session in
-                    viewModel.startSession(session)
+                    ContextualStartButton(state: viewModel.startButtonState) { session in
+                        viewModel.startSession(session)
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity)
+                    .background(Color(.secondarySystemBackground))
                 }
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
             }
             .padding(.horizontal)
         } else if viewModel.nextActiveSession != nil {
@@ -224,11 +242,24 @@ struct HomeView: View {
     }
 
     private var emptyUpcomingShortCard: some View {
-        Text("Aucune session planifiée pour les prochains jours.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 8)
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Aucune session planifiée pour les prochains jours.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            // SessionFormView ne supporte que l'édition pour l'instant ; on
+            // route vers SessionsListView qui hébergera le flow de création.
+            NavigationLink(destination: SessionsListView()) {
+                Label("Ajouter un rendez-vous", systemImage: "plus.circle.fill")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.blue.opacity(0.12))
+                    .foregroundStyle(.blue)
+                    .clipShape(Capsule())
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
     }
 
     private var emptyUpcomingFullCard: some View {

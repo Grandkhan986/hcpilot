@@ -263,22 +263,21 @@ struct StatCard: View {
     let color: Color
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundColor(color)
-                .frame(width: 28)
-            VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.subheadline)
+                    .foregroundStyle(color)
                 Text(title)
                     .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                Text(value)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .foregroundStyle(.secondary)
+                Spacer()
             }
-            Spacer(minLength: 0)
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
