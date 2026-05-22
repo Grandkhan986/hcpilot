@@ -37,10 +37,16 @@
 	<string>HCPilot utilise votre position pour optimiser vos itinéraires et pour horodater la signature des consentements (conformité HIPAA).</string>
 	<key>NSCameraUsageDescription</key>
 	<string>HCPilot utilise la caméra pour scanner les codes-barres des produits IV (suivi des lots et péremptions).</string>
+	<!--
+	  Audit H13 — App Transport Security.
+	  ArbitraryLoads=false force ATS strict (TLS 1.2+, ciphers forts) sur
+	  api.hcpilot.com en production. NSAllowsLocalNetworking ouvre une porte
+	  pour les appels http://localhost en DEBUG sans relâcher ATS globalement.
+	-->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
-		<true/>
+		<false/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>

@@ -82,12 +82,47 @@ class APIService {
     /// Pas d'utilisation de `AF.default` afin d'avoir un point unique pour
     /// configurer pinning / interceptors lorsque le backend prod sera prêt.
     /// Le nom `afSession` évite la collision avec notre model `Session` (IV).
+    ///
+    /// Audit H13 — Certificate pinning (scaffold).
+    /// En DEBUG : `ServerTrustManager` désactivé (localhost auto-signé).
+    /// En RELEASE : on attache un `ServerTrustManager` qui exige un cert
+    /// épinglé pour `api.hcpilot.com`. Le bundle doit fournir un `.cer`
+    /// au déploiement prod — d'ici là `evaluators` est vide et le release
+    /// build retombe sur ATS strict (TLS 1.2+, hostname validation).
     private let afSession: Alamofire.Session = {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = RequestTimeout.default
         config.timeoutIntervalForResource = RequestTimeout.download
+
+        #if DEBUG
         return Alamofire.Session(configuration: config)
+        #else
+        let evaluators: [String: ServerTrustEvaluating] = APIService.pinnedHostEvaluators()
+        let trustManager = evaluators.isEmpty
+            ? nil
+            : ServerTrustManager(evaluators: evaluators)
+        return Alamofire.Session(configuration: config, serverTrustManager: trustManager)
+        #endif
     }()
+
+    /// Audit H13 — retourne les évaluateurs de pinning à activer en prod.
+    /// Tant qu'aucun `.cer` n'est embarqué dans le bundle, retourne `[:]`
+    /// (ATS standard prend le relais). Pour activer : déposer le PEM/DER
+    /// du certificat racine `api.hcpilot.com` dans le bundle d'app, puis
+    /// l'évaluateur ci-dessous résout les certs via `Bundle.main`.
+    private static func pinnedHostEvaluators() -> [String: ServerTrustEvaluating] {
+        let host = "api.hcpilot.com"
+        let certs = Bundle.main.af.certificates
+        guard !certs.isEmpty else { return [:] }
+        return [
+            host: PinnedCertificatesTrustEvaluator(
+                certificates: certs,
+                acceptSelfSignedCertificates: false,
+                performDefaultValidation: true,
+                validateHost: true
+            )
+        ]
+    }
 
     private init() {
         // Restaure le token depuis le Keychain au boot (session persistante

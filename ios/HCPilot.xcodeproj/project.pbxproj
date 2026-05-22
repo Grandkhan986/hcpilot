@@ -21,6 +21,7 @@
 		327BF7DB8FC80A0EEFD5B182 /* HCPilotApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBA76C5AD8AF900767A1A10 /* HCPilotApp.swift */; };
 		41866FB1281A5A6D73FBC1F2 /* ValidatorsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1B42BBD417770BA894D0F0 /* ValidatorsTests.swift */; };
 		440EA6F95C2517FC20E54423 /* LotUsageSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBB65B7FBE988B37F269EE6F /* LotUsageSheet.swift */; };
+		4654A2CD557B5D48FF8E24F9 /* SessionUnauthorizedTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971764E1BC2246839AB9143E /* SessionUnauthorizedTests.swift */; };
 		4BE8C273C698C218C10AF8FD /* Validators.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCF4233970FC38F85A39CF1 /* Validators.swift */; };
 		53C3653CE4E755040B26138E /* SecuritySettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B69C58EBCD2ADA4C8F5B7F84 /* SecuritySettingsTests.swift */; };
 		53E4DCB80C5B467AEC30C2D3 /* SecureStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 868DD3DBCB41C050C102B8F8 /* SecureStorage.swift */; };
@@ -117,6 +118,7 @@
 		8E58AE54AA0A39F0508C0501 /* Inventory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Inventory.swift; sourceTree = "<group>"; };
 		907971F6B7E8F1FD244692DF /* NetworkInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkInfo.swift; sourceTree = "<group>"; };
 		931DAFC6CF40D9E9898EDB37 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
+		971764E1BC2246839AB9143E /* SessionUnauthorizedTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionUnauthorizedTests.swift; sourceTree = "<group>"; };
 		977963065666659FC9A11E11 /* HCPilotApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HCPilotApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9B8C841D9DCD91EAA998FB9D /* Invoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Invoice.swift; sourceTree = "<group>"; };
 		A62DA78CEBC549F848B7EE54 /* BarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeScannerView.swift; sourceTree = "<group>"; };
@@ -240,6 +242,7 @@
 				76030F8E90BF2142A1ACE2F4 /* MutationQueueTests.swift */,
 				7A2135761FC6961DB184AA04 /* OfflineCacheTests.swift */,
 				B69C58EBCD2ADA4C8F5B7F84 /* SecuritySettingsTests.swift */,
+				971764E1BC2246839AB9143E /* SessionUnauthorizedTests.swift */,
 				8E1B42BBD417770BA894D0F0 /* ValidatorsTests.swift */,
 			);
 			path = HCPilotAppTests;
@@ -445,6 +448,7 @@
 				89822B4E7B011EEACE8A76D4 /* MutationQueueTests.swift in Sources */,
 				C11D2168B10E3895C774A863 /* OfflineCacheTests.swift in Sources */,
 				53C3653CE4E755040B26138E /* SecuritySettingsTests.swift in Sources */,
+				4654A2CD557B5D48FF8E24F9 /* SessionUnauthorizedTests.swift in Sources */,
 				41866FB1281A5A6D73FBC1F2 /* ValidatorsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
