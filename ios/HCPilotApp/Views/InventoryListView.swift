@@ -175,7 +175,12 @@ final class InventoryViewModel: ObservableObject {
         errorMessage = nil
         defer { isLoading = false }
         do {
-            products = try await api.getInventoryProducts()
+            async let productsTask = api.getInventoryProducts()
+            async let lotsTask = api.getInventoryLots()
+            products = try await productsTask
+            let lots = try await lotsTask
+            // Brief §Notifications : J-15 péremption + J-30 (planif commandes).
+            await NotificationService.shared.scheduleInventoryExpirationNotifications(lots: lots)
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -5,6 +5,11 @@ struct HomeView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var viewModel = HomeViewModel()
 
+    // Brief §Dashboard : "auto-refresh 60s en foreground" — Timer publié toutes
+    // les 60s. SwiftUI suspend automatiquement les Timer.publish quand l'app
+    // passe en background, donc pas besoin de gérer scenePhase manuellement.
+    private let refreshTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+
     var body: some View {
         NavigationView {
             ScrollView {
@@ -166,6 +171,9 @@ struct HomeView: View {
             .onAppear {
                 viewModel.setUser(authViewModel.user)
                 viewModel.load()
+            }
+            .onReceive(refreshTimer) { _ in
+                viewModel.refresh()
             }
         }
     }

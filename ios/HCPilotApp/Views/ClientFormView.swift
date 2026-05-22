@@ -26,9 +26,10 @@ struct ClientFormView: View {
     @State private var stateCode: String = ""
     @State private var postalCode: String = ""
     @State private var accessNotes: String = ""
-    // Médical (chaînes séparées par virgule — affichage simple, conversion array au save)
-    @State private var allergiesStr: String = ""
-    @State private var medicalConditionsStr: String = ""
+    // Médical — chips multi-select pour allergies/conditions (brief §création
+    // client), saisie libre CSV pour médications (trop varié pour prédéfinir).
+    @State private var allergies: [String] = []
+    @State private var medicalConditions: [String] = []
     @State private var medicationsStr: String = ""
     // Contact d'urgence
     @State private var emergencyName: String = ""
@@ -82,14 +83,26 @@ struct ClientFormView: View {
                         .lineLimit(1...2)
                 }
 
-                Section {
-                    Text("Séparez les entrées par une virgule.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("Allergies", text: $allergiesStr, axis: .vertical).lineLimit(1...3)
-                    TextField("Antécédents médicaux", text: $medicalConditionsStr, axis: .vertical).lineLimit(1...3)
-                    TextField("Médications en cours", text: $medicationsStr, axis: .vertical).lineLimit(1...3)
-                } header: { Text("Médical") }
+                Section("Médical") {
+                    ChipMultiSelect(
+                        title: "Allergies",
+                        predefined: ChipPresets.allergies,
+                        selection: $allergies,
+                        placeholder: "Autre allergie…"
+                    )
+                    ChipMultiSelect(
+                        title: "Antécédents médicaux",
+                        predefined: ChipPresets.medicalConditions,
+                        selection: $medicalConditions,
+                        placeholder: "Autre antécédent…"
+                    )
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Médications en cours").font(.subheadline).fontWeight(.semibold)
+                        Text("Séparez les entrées par une virgule.").font(.caption2).foregroundStyle(.secondary)
+                        TextField("Ex: Metformine 1000mg, Lisinopril 10mg", text: $medicationsStr, axis: .vertical)
+                            .lineLimit(1...3)
+                    }
+                }
 
                 Section("Contact d'urgence") {
                     TextField("Nom", text: $emergencyName)
@@ -133,8 +146,8 @@ struct ClientFormView: View {
             stateCode = c.stateCode ?? ""
             postalCode = c.postalCode ?? ""
             accessNotes = c.accessNotes ?? ""
-            allergiesStr = c.allergies.joined(separator: ", ")
-            medicalConditionsStr = c.medicalConditions.joined(separator: ", ")
+            allergies = c.allergies
+            medicalConditions = c.medicalConditions
             medicationsStr = c.medications.joined(separator: ", ")
             emergencyName = c.emergencyContactName ?? ""
             emergencyPhone = c.emergencyContactPhone ?? ""
@@ -175,8 +188,8 @@ struct ClientFormView: View {
                     accessNotes: accessNotes.isEmpty ? nil : accessNotes,
                     latitude: nil,
                     longitude: nil,
-                    allergies: splitCSV(allergiesStr),
-                    medicalConditions: splitCSV(medicalConditionsStr),
+                    allergies: allergies,
+                    medicalConditions: medicalConditions,
                     medications: splitCSV(medicationsStr),
                     emergencyContactName: emergencyName.isEmpty ? nil : emergencyName,
                     emergencyContactPhone: emergencyPhone.isEmpty ? nil : emergencyPhone,
@@ -203,8 +216,8 @@ struct ClientFormView: View {
                     stateCode: changed(stateCode, c.stateCode),
                     postalCode: changed(postalCode, c.postalCode),
                     accessNotes: changed(accessNotes, c.accessNotes),
-                    allergies: changedArray(splitCSV(allergiesStr), c.allergies),
-                    medicalConditions: changedArray(splitCSV(medicalConditionsStr), c.medicalConditions),
+                    allergies: changedArray(allergies, c.allergies),
+                    medicalConditions: changedArray(medicalConditions, c.medicalConditions),
                     medications: changedArray(splitCSV(medicationsStr), c.medications),
                     emergencyContactName: changed(emergencyName, c.emergencyContactName),
                     emergencyContactPhone: changed(emergencyPhone, c.emergencyContactPhone)

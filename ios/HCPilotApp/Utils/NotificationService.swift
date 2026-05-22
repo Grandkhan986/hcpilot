@@ -144,6 +144,32 @@ final class NotificationService {
         }
     }
 
+    // MARK: - Inventory expiration (brief §Notifications)
+
+    /// J-15 avant péremption d'un lot inventaire (brief §Stock et scan : "Alertes").
+    /// Programme aussi J-30 pour les lots de gros volume (utile pour planifier
+    /// les commandes). Bonus : un seul rappel par lot (id stable).
+    func scheduleInventoryExpirationNotifications(lots: [InventoryLot]) async {
+        await removeScheduled(withPrefix: "inventory:")
+        let now = Date()
+        for lot in lots where lot.quantityRemaining > 0 && lot.archivedAt == nil {
+            let target = lot.expirationDate
+            guard target > now else { continue }
+            // J-30 + J-15 (brief : "J-15 avant péremption" + bon sens commande)
+            for d in [30, 15] {
+                guard let fireDate = calendar.date(byAdding: .day, value: -d, to: target) else { continue }
+                let fireAt9 = setHour(fireDate, hour: 9)
+                guard fireAt9 > now else { continue }
+                await scheduleAt(
+                    id: "inventory:\(lot.id):J-\(d)",
+                    title: "Lot à renouveler",
+                    body: "\(lot.productName) — Lot \(lot.lotNumber) expire dans \(d) jours (\(lot.quantityRemaining) restant\(lot.quantityRemaining > 1 ? "s" : "")).",
+                    fireDate: fireAt9
+                )
+            }
+        }
+    }
+
     // MARK: - Inspection / test
 
     func pendingCount() async -> Int {
