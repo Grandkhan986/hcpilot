@@ -17,6 +17,7 @@ enum AlertSeverity: String, Codable {
     case critical
 }
 
+/// Licence d'exercice de la nurse (brief : RN/NP/LPN/MD/PA + état US).
 struct LicenseInfo: Codable {
     let licenseNumber: String?
     let licenseType: String?
@@ -26,7 +27,10 @@ struct LicenseInfo: Codable {
     let status: ComplianceStatus
 }
 
-struct MedicalDirectorInfo: Codable, Identifiable {
+/// Medical Director qui supervise la nurse (réglementation US par État).
+/// Brief : un seul MD actif à la fois.
+/// Audit B2 : Equatable/Hashable basés sur `id`.
+struct MedicalDirectorInfo: Codable, Identifiable, Hashable {
     let id: String
     let nurseId: String
     let firstName: String
@@ -43,8 +47,14 @@ struct MedicalDirectorInfo: Codable, Identifiable {
     let nextAuditStatus: ComplianceStatus?
 
     var fullName: String { "\(firstName) \(lastName)" }
+
+    static func == (lhs: MedicalDirectorInfo, rhs: MedicalDirectorInfo) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
+/// Standing order signée par le Medical Director — autorise la nurse à
+/// administrer une formulation IV donnée. Brief : version, date d'expiration.
+/// Audit B2 : Equatable/Hashable basés sur `id`.
 struct StandingOrderInfo: Codable, Identifiable, Hashable {
     let id: String
     let nurseId: String
@@ -57,9 +67,15 @@ struct StandingOrderInfo: Codable, Identifiable, Hashable {
     let expiresAt: Date?
     let isActive: Bool
     let expirationStatus: ComplianceStatus?
+
+    static func == (lhs: StandingOrderInfo, rhs: StandingOrderInfo) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
-struct ComplianceAlertInfo: Codable, Identifiable {
+/// Alerte de conformité (licence/MD/SO expiration, audit dû, etc.).
+/// Brief : conserve l'horodatage triggered/acknowledged/resolved pour l'audit.
+/// Audit B2 : Equatable/Hashable basés sur `id`.
+struct ComplianceAlertInfo: Codable, Identifiable, Hashable {
     let id: String
     let nurseId: String
     let alertType: String
@@ -70,8 +86,12 @@ struct ComplianceAlertInfo: Codable, Identifiable {
     let triggeredAt: Date
     let acknowledgedAt: Date?
     let resolvedAt: Date?
+
+    static func == (lhs: ComplianceAlertInfo, rhs: ComplianceAlertInfo) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
+/// Agrégat de l'écran Conformité — réponse de `/compliance/dashboard`.
 struct ComplianceDashboard: Codable {
     let license: LicenseInfo?
     let medicalDirector: MedicalDirectorInfo?

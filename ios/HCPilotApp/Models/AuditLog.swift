@@ -36,7 +36,8 @@ enum AuditAction: String, Codable {
 
 /// Entrée immuable du journal d'audit. Brief §HIPAA : conservation 7 ans,
 /// IP/UA capturées côté serveur. camelCase Swift / snake_case JSON.
-struct AuditLogEntry: Identifiable, Codable {
+/// Audit B2 : Equatable/Hashable basés sur `id`.
+struct AuditLogEntry: Identifiable, Codable, Hashable {
     let id: String
     let nurseId: String?
     let entityType: AuditEntityType
@@ -46,6 +47,9 @@ struct AuditLogEntry: Identifiable, Codable {
     let ipAddress: String?
     let userAgent: String?
     let occurredAt: Date
+
+    static func == (lhs: AuditLogEntry, rhs: AuditLogEntry) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 /// Représentation décodable récursive de toute valeur JSON (audit H12).

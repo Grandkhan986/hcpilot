@@ -16,7 +16,8 @@ struct ConsentCheckpoint: Codable, Hashable, Identifiable {
 
 /// Métadonnées d'un consentement signé. Brief `consents`.
 /// camelCase Swift / snake_case JSON via APIService global strategy.
-struct ConsentSummary: Identifiable, Codable {
+/// Audit B2 : Equatable/Hashable basés sur `id`.
+struct ConsentSummary: Identifiable, Codable, Hashable {
     let id: String
     let sessionId: String
     let clientId: String
@@ -31,6 +32,9 @@ struct ConsentSummary: Identifiable, Codable {
     let deviceInfo: [String: String]?
     let hasPdf: Bool
     let createdAt: Date
+
+    static func == (lhs: ConsentSummary, rhs: ConsentSummary) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 struct CreateConsentRequest: Encodable {

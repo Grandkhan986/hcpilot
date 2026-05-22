@@ -33,6 +33,9 @@ struct Session: Identifiable, Codable, Equatable {
     var photosPaths: [String]
     var cancelledAt: Date?
     var cancellationReason: String?
+    /// Audit M5 : updatedAt présent sur tous les Models mutables (utilisé par
+    /// MutationQueue pour le last-write-wins, et pour les sync conflicts).
+    var updatedAt: Date?
 
     /// Cycle de vie (brief : 6 statuts).
     /// scheduled → en_route → in_progress → completed

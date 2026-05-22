@@ -2,6 +2,8 @@ import Foundation
 
 /// Brief schema `clients` — patient privé du soignant IV mobile (private pay).
 /// camelCase Swift / snake_case JSON via APIService global strategy.
+/// Audit B2 : Equatable/Hashable basés sur `id` (l'identité de l'entité) plutôt
+/// que sur toutes les propriétés.
 struct Client: Identifiable, Hashable, Codable {
     let id: String
     let nurseId: String
@@ -47,4 +49,7 @@ struct Client: Identifiable, Hashable, Codable {
             .filter { !$0.isEmpty }
             .joined(separator: ", ")
     }
+
+    static func == (lhs: Client, rhs: Client) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
