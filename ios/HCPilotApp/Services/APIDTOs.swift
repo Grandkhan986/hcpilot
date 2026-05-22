@@ -93,7 +93,7 @@ extension APIService {
 
     struct DashboardResponse: Decodable {
         let totalClients: Int
-        let today_visits: Int
+        let todaySessions: Int
         let pendingInvoices: Int
         let lowStockAlerts: Int
         let monthlyRevenue: Double
@@ -102,10 +102,10 @@ extension APIService {
     }
 
     struct RevenueResponse: Decodable {
-        let total_revenue: Double
-        let total_visits: Int
-        let average_visit_value: Double
-        let by_visit_type: [String: Double]
+        let totalRevenue: Double
+        let totalSessions: Int
+        let averageSessionValue: Double
+        let byFormulationName: [String: Double]
     }
 
     // MARK: - Onboarding

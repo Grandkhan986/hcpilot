@@ -119,11 +119,12 @@ class ReportsViewModel: ObservableObject {
     private func fetchReport() async {
         do {
             let report = try await apiService.getRevenueReport(startDate: "2024-01-01", endDate: "2024-12-31")
-            totalRevenue = String(format: "%.0f €", report.total_revenue)
-            totalSessions = report.total_visits
-            avgSessionValue = String(format: "%.0f €", report.average_visit_value)
+            totalRevenue = String(format: "%.0f €", report.totalRevenue)
+            totalSessions = report.totalSessions
+            avgSessionValue = String(format: "%.0f €", report.averageSessionValue)
 
-            revenueByType = report.by_visit_type.map { (key: $0.key.replacingOccurrences(of: "_", with: " "), value: $0.value) }
+            revenueByType = report.byFormulationName
+                .map { (key: $0.key.replacingOccurrences(of: "_", with: " "), value: $0.value) }
                 .sorted { $0.value > $1.value }
             maxRevenue = revenueByType.first?.value ?? 1
         } catch {

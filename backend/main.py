@@ -1992,16 +1992,16 @@ async def get_dashboard(payload: dict = Depends(verify_token)):
     """Get dashboard statistics"""
     nurse_id = payload.get("sub")
     low_stock = _low_stock_products(nurse_id)
-    today_visits = [_enrich_visit(v) for v in MOCK_SESSIONS if v["status"] in ("scheduled", "in_progress")]
+    today_sessions = [_enrich_visit(v) for v in MOCK_SESSIONS if v["status"] in ("scheduled", "in_progress")]
     today_revenue = sum(v["total_amount"] for v in MOCK_SESSIONS if v["status"] == "completed")
     return {
-        "total_patients": len(MOCK_CLIENTS),
-        "today_visits": len(today_visits),
+        "total_clients": len(MOCK_CLIENTS),
+        "today_sessions": len(today_sessions),
         "pending_invoices": len([i for i in MOCK_INVOICES if i["status"] == "sent"]),
         "low_stock_alerts": len(low_stock),
         "monthly_revenue": 4250.00,
         "today_revenue": today_revenue,
-        "sessions_today": today_visits,
+        "sessions_today": today_sessions,
         "low_stock_items": low_stock,
     }
 
@@ -2014,8 +2014,8 @@ async def get_revenue_report(
     """Get revenue report"""
     return {
         "total_revenue": 50000.00,
-        "total_visits": 500,
-        "average_visit_value": 100.00,
+        "total_sessions": 500,
+        "average_session_value": 100.00,
         "by_formulation_name": {
             "IV_Hydration": 30000.00,
             "Post_Op": 15000.00,

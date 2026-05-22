@@ -10,10 +10,32 @@ class AuthViewModel: ObservableObject {
     @Published var sessionLocked = false  // affiche un toast après auto-logout par inactivité
 
     private let apiService = APIService.shared
+    private var unauthorizedObserver: NSObjectProtocol?
 
     init() {
         // Restauration silencieuse de session si Keychain en a une.
         restoreSession()
+        // Audit H15 — auto-logout sur 401 (token rejeté serveur).
+        unauthorizedObserver = NotificationCenter.default.addObserver(
+            forName: .hcpilotSessionUnauthorized,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            // Closure non-isolée → re-saute sur le main actor pour muter
+            // l'état publié de AuthViewModel.
+            Task { @MainActor [weak self] in
+                guard let self = self, self.isAuthenticated else { return }
+                self.sessionLocked = true
+                self.isAuthenticated = false
+                self.user = nil
+            }
+        }
+    }
+
+    deinit {
+        if let obs = unauthorizedObserver {
+            NotificationCenter.default.removeObserver(obs)
+        }
     }
 
     func login(email: String, password: String) async {

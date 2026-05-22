@@ -68,6 +68,27 @@ class APIService {
         return e
     }()
 
+    /// Audit M8 — timeouts par catégorie d'appel.
+    /// - `default` : 30 s pour les GET/POST courts (CRUD, dashboard, login).
+    /// - `upload`  : 60 s pour POST avec body lourd (PDF de consentement b64).
+    /// - `download`: 120 s pour les GET volumineux (PDF, audit logs paginés).
+    enum RequestTimeout {
+        static let `default`: TimeInterval = 30
+        static let upload: TimeInterval = 60
+        static let download: TimeInterval = 120
+    }
+
+    /// Audit M8 — `Alamofire.Session` dédiée avec timeouts par défaut.
+    /// Pas d'utilisation de `AF.default` afin d'avoir un point unique pour
+    /// configurer pinning / interceptors lorsque le backend prod sera prêt.
+    /// Le nom `afSession` évite la collision avec notre model `Session` (IV).
+    private let afSession: Alamofire.Session = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = RequestTimeout.default
+        config.timeoutIntervalForResource = RequestTimeout.download
+        return Alamofire.Session(configuration: config)
+    }()
+
     private init() {
         // Restaure le token depuis le Keychain au boot (session persistante
         // sauf si expirée par inactivité — l'AuthViewModel s'en charge).
@@ -100,11 +121,15 @@ class APIService {
             throw APIError.invalidURL(endpoint)
         }
         if authToken != nil { touchActivity() }
-        let data = try await AF.request(url, headers: headers)
-            .validate()
-            .serializingData()
-            .value
-        return try decoder.decode(T.self, from: data)
+        do {
+            let data = try await afSession.request(url, headers: headers)
+                .validate()
+                .serializingData()
+                .value
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw intercept(error)
+        }
     }
 
     /// GET avec cache de secours offline (brief §Gestion offline).
@@ -119,7 +144,7 @@ class APIService {
         }
         if authToken != nil { touchActivity() }
         do {
-            let data = try await AF.request(url, headers: headers)
+            let data = try await afSession.request(url, headers: headers)
                 .validate()
                 .serializingData()
                 .value
@@ -135,6 +160,12 @@ class APIService {
             }
             return try decoder.decode(T.self, from: data)
         } catch {
+            // 401 = session invalide. On NE retombe PAS sur le cache offline
+            // (servirait des données stale d'une session qui n'est plus la
+            // bonne) ; on déclenche l'auto-logout.
+            if statusCode(from: error) == 401 {
+                throw intercept(error)
+            }
             if let cached = OfflineCache.shared.load(for: endpoint) {
                 await MainActor.run {
                     ConnectivityState.shared.markOffline(cachedAt: cached.savedAt)
@@ -156,11 +187,15 @@ class APIService {
         request.headers = headers
         request.httpBody = jsonData
 
-        let data = try await AF.request(request)
-            .validate()
-            .serializingData()
-            .value
-        return try decoder.decode(T.self, from: data)
+        do {
+            let data = try await afSession.request(request)
+                .validate()
+                .serializingData()
+                .value
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw intercept(error)
+        }
     }
 
     private func postAction(_ endpoint: String) async throws -> [String: Any] {
@@ -168,14 +203,18 @@ class APIService {
             throw APIError.invalidURL(endpoint)
         }
         if authToken != nil { touchActivity() }
-        let data = try await AF.request(url, method: .post, headers: headers)
-            .validate()
-            .serializingData()
-            .value
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw APIError.invalidResponse
+        do {
+            let data = try await afSession.request(url, method: .post, headers: headers)
+                .validate()
+                .serializingData()
+                .value
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                throw APIError.invalidResponse
+            }
+            return json
+        } catch {
+            throw intercept(error)
         }
-        return json
     }
 
     // MARK: - Offline mutations (brief §Gestion offline)
@@ -201,6 +240,30 @@ class APIService {
         }
         let nsError = error as NSError
         return nsError.domain == NSURLErrorDomain
+    }
+
+    /// Audit H15 — détection du 401 + broadcast unique pour auto-logout.
+    /// Toute requête qui prend un 401 purge la session locale et notifie
+    /// `AuthViewModel` via `Notification.Name.hcpilotSessionUnauthorized` ;
+    /// l'UI repasse alors sur l'écran de login plutôt que de remonter une
+    /// erreur cryptique à l'utilisateur.
+    private func statusCode(from error: Error) -> Int? {
+        if let afError = error.asAFError,
+           case .responseValidationFailed(let reason) = afError,
+           case .unacceptableStatusCode(let code) = reason {
+            return code
+        }
+        return nil
+    }
+
+    @discardableResult
+    private func intercept(_ error: Error) -> Error {
+        guard statusCode(from: error) == 401 else { return error }
+        // Token rejeté serveur → purge locale immédiate et notification.
+        // Sync clearToken (touche le Keychain) puis broadcast.
+        clearToken()
+        NotificationCenter.default.post(name: .hcpilotSessionUnauthorized, object: nil)
+        return APIError.unauthorized
     }
 
     /// POST sans body (action) avec mise en queue offline. Renvoie le JSON
@@ -276,7 +339,7 @@ class APIService {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
         do {
-            _ = try await AF.request(request)
+            _ = try await afSession.request(request)
                 .validate()
                 .serializingData()
                 .value
@@ -302,11 +365,15 @@ class APIService {
         request.headers = headers
         request.httpBody = jsonData
 
-        let data = try await AF.request(request)
-            .validate()
-            .serializingData()
-            .value
-        return try decoder.decode(T.self, from: data)
+        do {
+            let data = try await afSession.request(request)
+                .validate()
+                .serializingData()
+                .value
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw intercept(error)
+        }
     }
 
     private func delete(_ endpoint: String) async throws {
@@ -314,10 +381,14 @@ class APIService {
             throw APIError.invalidURL(endpoint)
         }
         if authToken != nil { touchActivity() }
-        _ = try await AF.request(url, method: .delete, headers: headers)
-            .validate()
-            .serializingData()
-            .value
+        do {
+            _ = try await afSession.request(url, method: .delete, headers: headers)
+                .validate()
+                .serializingData()
+                .value
+        } catch {
+            throw intercept(error)
+        }
     }
 
     private func deleteReturning<T: Decodable>(_ endpoint: String) async throws -> T {
@@ -325,11 +396,15 @@ class APIService {
             throw APIError.invalidURL(endpoint)
         }
         if authToken != nil { touchActivity() }
-        let data = try await AF.request(url, method: .delete, headers: headers)
-            .validate()
-            .serializingData()
-            .value
-        return try decoder.decode(T.self, from: data)
+        do {
+            let data = try await afSession.request(url, method: .delete, headers: headers)
+                .validate()
+                .serializingData()
+                .value
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw intercept(error)
+        }
     }
 
     // MARK: - Auth
@@ -509,6 +584,14 @@ class APIService {
     func optimizeRoute(sessions: [Session]) async throws -> OptimizedRouteResponse {
         return try await post("/optimize/routes", body: sessions)
     }
+}
+
+// MARK: - Notifications
+
+extension Notification.Name {
+    /// Diffusée par `APIService.intercept` lorsqu'un endpoint renvoie 401.
+    /// `AuthViewModel` l'observe pour repasser sur l'écran de login.
+    static let hcpilotSessionUnauthorized = Notification.Name("HCPilot.SessionUnauthorized")
 }
 
 // MARK: - Error Types

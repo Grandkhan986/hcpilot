@@ -48,7 +48,7 @@ class HomeViewModel: ObservableObject {
         do {
             let dashboard = try await apiService.getDashboard()
 
-            todaySessionsCount = dashboard.today_visits
+            todaySessionsCount = dashboard.todaySessions
             monthlyRevenue = dashboard.monthlyRevenue
             lowStockCount = dashboard.lowStockAlerts
             upcomingSessions = dashboard.sessionsToday
