@@ -15,6 +15,7 @@ struct ConsentFlowView: View {
 
     @StateObject private var vm: ConsentFlowViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var showCancelConfirm = false
 
     init(session: Session, clientName: String, nurseName: String, onCompleted: @escaping () -> Void) {
         self.session = session
@@ -33,6 +34,7 @@ struct ConsentFlowView: View {
             VStack(spacing: 0) {
                 ProgressDots(total: 4, current: vm.step)
                     .padding(.top, 12)
+                    .accessibilityIdentifier("consent.progress")
 
                 TabView(selection: $vm.step) {
                     FormulationStep(vm: vm).tag(0)
@@ -47,11 +49,31 @@ struct ConsentFlowView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fermer") { dismiss() }
+                    Button("Fermer") {
+                        // Audit H-51 : confirm si au-delà de l'étape 0 OU si
+                        // une signature a déjà été posée. La perte d'une
+                        // signature client est inacceptable.
+                        if vm.step > 0 {
+                            showCancelConfirm = true
+                        } else {
+                            dismiss()
+                        }
+                    }
+                    .accessibilityIdentifier("consent.close")
                 }
             }
             .task {
                 await vm.loadFormulations()
+            }
+            .confirmationDialog(
+                "Abandonner le consentement ?",
+                isPresented: $showCancelConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Abandonner", role: .destructive) { dismiss() }
+                Button("Continuer", role: .cancel) {}
+            } message: {
+                Text("La signature et les acquittements seront perdus. Le client devra recommencer.")
             }
             .alert("Erreur", isPresented: .constant(vm.errorMessage != nil)) {
                 Button("OK") { vm.errorMessage = nil }
@@ -85,8 +107,35 @@ private struct FormulationStep: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
 
-            if vm.standingOrders.isEmpty {
-                ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
+            // Audit C-50 : empty state explicite si aucune SO active.
+            // Sans cet écran, Maria (RN débutante) reste bloquée sur un
+            // ProgressView infini si elle n'a pas encore configuré sa pratique.
+            if vm.isLoadingStandingOrders {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 40)
+                    .accessibilityIdentifier("consent.so.loading")
+            } else if vm.standingOrders.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 44))
+                        .foregroundStyle(.orange)
+                    Text("Aucune standing order active")
+                        .font(.headline)
+                    Text("Vous devez avoir au moins une standing order signée par votre Medical Director pour recueillir un consentement.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    Text("Allez dans l'onglet Conformité pour en ajouter une, ou complétez votre configuration depuis Profil → Configuration de la pratique.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+                .padding(.top, 24)
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("consent.so.empty")
             } else {
                 ScrollView {
                     VStack(spacing: 12) {
@@ -102,6 +151,7 @@ private struct FormulationStep: View {
                                 )
                             }
                             .buttonStyle(.plain)
+                            .accessibilityIdentifier("consent.so.\(so.id)")
                         }
                     }
                     .padding(.horizontal)
@@ -174,9 +224,11 @@ private struct ConsentTextStep: View {
             HStack {
                 Button("Retour") { vm.step = 0 }
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier("consent.text.back")
                 Spacer()
                 Button("J'ai lu, continuer") { vm.step = 2 }
                     .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("consent.text.continue")
             }
             .padding()
         }
@@ -206,6 +258,7 @@ private struct CheckpointsStep: View {
                     .padding()
                     .background(Color(.systemGray6))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .accessibilityIdentifier("consent.checkpoint.\(i)")
                 }
             }
             .padding(.horizontal)
@@ -215,10 +268,12 @@ private struct CheckpointsStep: View {
             HStack {
                 Button("Retour") { vm.step = 1 }
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier("consent.checkpoints.back")
                 Spacer()
                 Button("Continuer vers la signature") { vm.step = 3 }
                     .buttonStyle(.borderedProminent)
                     .disabled(!vm.allCheckpointsAccepted)
+                    .accessibilityIdentifier("consent.checkpoints.continue")
             }
             .padding()
         }
@@ -248,10 +303,12 @@ private struct SignatureStep: View {
                         .stroke(Color.gray.opacity(0.4), lineWidth: 1)
                 )
                 .padding(.horizontal)
+                .accessibilityIdentifier("consent.signature.canvas")
 
             HStack {
                 Button("Effacer") { canvasView.drawing = PKDrawing() }
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier("consent.signature.clear")
                 Spacer()
                 if vm.isSubmitting {
                     ProgressView()
@@ -260,7 +317,12 @@ private struct SignatureStep: View {
                         Task { await vm.submit(canvas: canvasView) }
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(canvasView.drawing.bounds.isEmpty)
+                    // Audit H-55 : exiger une signature de taille minimale
+                    // pour éviter qu'un point microscopique soit accepté.
+                    // 40×20 pt = au moins un trait court (5-6 caractères de
+                    // signature, ou un paraphe).
+                    .disabled(!isSignatureUsable(canvasView.drawing))
+                    .accessibilityIdentifier("consent.signature.confirm")
                 }
             }
             .padding(.horizontal)
@@ -316,10 +378,18 @@ private struct ProgressDots: View {
 
 // MARK: - ViewModel
 
+/// Audit H-55 : valide qu'une signature couvre au moins ~40×20pt (équivalent
+/// d'un trait de paraphe court). Refuse les "signatures fantômes" d'1 point.
+func isSignatureUsable(_ drawing: PKDrawing) -> Bool {
+    let b = drawing.bounds
+    return b.width >= 40 && b.height >= 20
+}
+
 @MainActor
 final class ConsentFlowViewModel: ObservableObject {
     @Published var step: Int = 0
     @Published var standingOrders: [StandingOrderInfo] = []
+    @Published var isLoadingStandingOrders = true
     @Published var selectedStandingOrder: StandingOrderInfo?
     @Published var consentText: String = ""
     @Published var checkpoints: [ConsentCheckpoint] = [
@@ -350,6 +420,8 @@ final class ConsentFlowViewModel: ObservableObject {
     }
 
     func loadFormulations() async {
+        isLoadingStandingOrders = true
+        defer { isLoadingStandingOrders = false }
         do {
             // Charge les standing orders actives de la nurse (et non un catalogue
             // statique) : la signature du consentement référence ainsi une vraie
@@ -370,11 +442,12 @@ final class ConsentFlowViewModel: ObservableObject {
             errorMessage = "Tous les acquittements doivent être cochés."
             return
         }
-        let drawingBounds = canvas.drawing.bounds
-        guard !drawingBounds.isEmpty else {
-            errorMessage = "Veuillez signer avant de confirmer."
+        // Audit H-55 : exige une signature lisible.
+        guard isSignatureUsable(canvas.drawing) else {
+            errorMessage = "La signature est trop petite. Demandez au client de signer plus largement."
             return
         }
+        let drawingBounds = canvas.drawing.bounds
 
         isSubmitting = true
         defer { isSubmitting = false }

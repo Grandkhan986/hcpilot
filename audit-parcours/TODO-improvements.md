@@ -163,6 +163,61 @@ d'origine, fichier(s) concerné(s), et la décision attendue côté fondateur.
 
 ---
 
+---
+
+## Parcours 4 — Consentement signature flow
+
+### H-53 — Hint visuel "Signer ici" sur le canvas
+
+- **Sévérité** : HAUTE
+- **Solution proposée** : ligne de signature en pointillé + texte "Signer ici" en placeholder qui disparaît au 1ᵉʳ trait.
+- **Effort** : 30 min.
+
+### H-54 — Scroll-to-bottom requis sur consent text
+
+- **Sévérité** : HAUTE
+- **Problème** : conformité HIPAA — "J'ai lu" devrait être validable uniquement après lecture complète.
+- **Solution proposée** : tracker `GeometryReader` sur la ScrollView, activer le bouton "Continuer" seulement après reached-bottom.
+- **Effort** : 1 h.
+
+### M-56 — Prévisualisation PDF avant POST
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : ajouter une step 4 (Aperçu) avec `PDFKit.PDFView` rendant `ConsentPDFBuilder.build(...)` localement. Confirmation explicite avant POST.
+- **Effort** : 1 h 30.
+
+### M-57 — Timeout sur loadFormulations
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : timeout 10 s sur l'appel + retry button visible. (Déjà partiellement adressé via `isLoadingStandingOrders` flag.)
+- **Effort** : 30 min.
+
+### M-58 — Accessibilité ProgressDots
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : ajouter `accessibilityLabel("Étape X sur 4")` sur ProgressDots.
+- **Effort** : 10 min.
+
+### M-60 — Communication HIPAA inline
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : ajouter sous le canvas signature "Le PDF est chiffré localement et envoyé sur un serveur HIPAA-compliant."
+- **Effort** : 15 min.
+
+### B-59 / B-61 — Polish iPad canvas / bouton reset wizard
+
+- **Effort** : 30 min.
+
+### UI-T3 — Tester la signature PencilKit en XCUI
+
+- **Problème** : XCUI ne sait pas dessiner sur PKCanvasView (pas d'API gestes graphiques pour le hit-testing custom).
+- **Pistes** :
+  1. Faire un mock `PKCanvasView` via flag d'environnement qui pré-remplit `drawing`.
+  2. Ajouter un bouton de debug "Signature de test" derrière un launchArgument `-uitest`.
+- **Effort** : 1 h pour la solution flag debug.
+
+---
+
 ## Tests UI fragiles à stabiliser
 
 ### UI-T1 — `test_onboarding_nominal_flow_reaches_done` (skip)

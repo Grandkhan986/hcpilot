@@ -373,6 +373,7 @@ struct SessionDetailView: View {
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
+                    .accessibilityIdentifier("session.openConsentFlow")
                 }
                 .padding()
                 .background(Color.orange.opacity(0.08))
