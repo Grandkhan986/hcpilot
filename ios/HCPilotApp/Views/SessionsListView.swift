@@ -165,6 +165,8 @@ struct SessionDetailView: View {
     @State private var generatedInvoice: Invoice?
     @State private var invoicePdfData: Data?
     @State private var showInvoicePDF = false
+    // C-62 — saisie des vitals
+    @State private var showVitalsEntry = false
 
     var body: some View {
         ScrollView {
@@ -247,6 +249,20 @@ struct SessionDetailView: View {
                     }
 
                     if session.status == .inProgress {
+                        // C-62 — accès à VitalsEntryView pendant la session
+                        Button(action: { showVitalsEntry = true }) {
+                            HStack {
+                                Image(systemName: "heart.text.square")
+                                Text("Saisir les vitals").fontWeight(.semibold)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.pink.opacity(0.15))
+                        .foregroundStyle(.pink)
+                        .cornerRadius(8)
+                        .accessibilityIdentifier("session.openVitals")
+
                         Button(action: { showLotUsageSheet = true }) {
                             Text("Terminer la session")
                                 .font(.headline)
@@ -287,6 +303,9 @@ struct SessionDetailView: View {
             if let data = invoicePdfData {
                 PDFPreviewView(data: data)
             }
+        }
+        .sheet(isPresented: $showVitalsEntry) {
+            VitalsEntryView(session: session) { onAction() }
         }
         .navigationTitle("Détail")
         .navigationBarTitleDisplayMode(.inline)
