@@ -26,6 +26,9 @@ struct Invoice: Identifiable, Hashable, Codable {
     let refundedAt: Date?
     let refundAmount: Double?
     let stripePaymentIntentId: String?
+    /// C-63 (stub) — chemin local du PDF généré à la complétion de session.
+    /// Sera remplacé par un path Supabase Storage en Sprint 4 Stripe.
+    let invoicePdfPath: String?
     let createdAt: Date
     let updatedAt: Date?
 

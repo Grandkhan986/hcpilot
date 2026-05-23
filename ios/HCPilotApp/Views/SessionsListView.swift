@@ -161,6 +161,10 @@ struct SessionDetailView: View {
     @State private var showPDF = false
     @State private var showLotUsageSheet = false
     @EnvironmentObject var authViewModel: AuthViewModel
+    // C-63 — invoice générée à la complétion de la session
+    @State private var generatedInvoice: Invoice?
+    @State private var invoicePdfData: Data?
+    @State private var showInvoicePDF = false
 
     var body: some View {
         ScrollView {
@@ -254,9 +258,35 @@ struct SessionDetailView: View {
                         .cornerRadius(8)
                         .accessibilityIdentifier("session.complete")
                     }
+
+                    // C-63 — accès à la facture stub si la session a été
+                    // complétée et qu'une invoice a été générée.
+                    if session.status == .completed, let invoice = generatedInvoice {
+                        Button {
+                            invoicePdfData = InvoiceLocalStore.shared.loadPDF(forInvoiceId: invoice.id)
+                            showInvoicePDF = invoicePdfData != nil
+                        } label: {
+                            HStack {
+                                Image(systemName: "doc.richtext")
+                                Text("Voir la facture (\(invoice.invoiceNumber))")
+                                    .fontWeight(.semibold)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.purple)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                        }
+                        .accessibilityIdentifier("session.viewInvoice")
+                    }
                 }
             }
             .padding()
+        }
+        .sheet(isPresented: $showInvoicePDF) {
+            if let data = invoicePdfData {
+                PDFPreviewView(data: data)
+            }
         }
         .navigationTitle("Détail")
         .navigationBarTitleDisplayMode(.inline)
@@ -298,7 +328,15 @@ struct SessionDetailView: View {
             LotUsageSheet(
                 session: session,
                 preferredProductName: consent?.formulationName,
-                onCompleted: { onAction() }
+                onCompleted: {
+                    // C-63 — déclenche la génération de l'invoice stub au
+                    // moment où la session passe en completed. Best-effort :
+                    // si la génération échoue, on n'empêche pas le flow.
+                    Task {
+                        await generateInvoiceIfNeeded()
+                        onAction()
+                    }
+                }
             )
         }
         .alert("Annuler cette session ?", isPresented: $showCancelConfirm) {
@@ -438,6 +476,27 @@ struct SessionDetailView: View {
             } catch {
                 print("Erreur terminaison: \(error)")
             }
+        }
+    }
+
+    /// C-63 — génère l'invoice stub à la complétion de session. Best-effort.
+    /// Le PDF est stocké localement (cf. InvoiceLocalStore) et un POST est
+    /// envoyé au backend pour le lister.
+    private func generateInvoiceIfNeeded() async {
+        do {
+            let invoice = try await InvoiceService.shared.generateInvoiceForCompletedSession(
+                session,
+                practiceName: nil,
+                nurseFullName: authViewModel.user?.fullName,
+                clientFullName: session.clientName,
+                clientAddress: nil
+            )
+            generatedInvoice = invoice
+            // Charge le PDF local pour l'aperçu immédiat.
+            invoicePdfData = InvoiceLocalStore.shared.loadPDF(forInvoiceId: invoice.id)
+        } catch {
+            // Stub : log seulement. La complétion de session reste valide.
+            print("Erreur génération invoice : \(error.localizedDescription)")
         }
     }
 

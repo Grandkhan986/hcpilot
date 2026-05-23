@@ -100,6 +100,7 @@ final class InvoiceCodableTests: XCTestCase {
             dueDate: Date(timeIntervalSince1970: 0),
             paidAt: nil, refundedAt: nil, refundAmount: nil,
             stripePaymentIntentId: nil,
+            invoicePdfPath: nil,
             createdAt: Date(timeIntervalSince1970: 0),
             updatedAt: nil
         )

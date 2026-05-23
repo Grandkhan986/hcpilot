@@ -319,6 +319,7 @@ struct NewInvoiceView: View {
             refundedAt: nil,
             refundAmount: nil,
             stripePaymentIntentId: nil,
+            invoicePdfPath: nil,
             createdAt: Date(),
             updatedAt: nil
         )
