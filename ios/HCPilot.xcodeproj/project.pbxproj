@@ -75,6 +75,7 @@
 		F332EBBDB5ECFA8419BF5994 /* AuditLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 804FC12A0277695424272944 /* AuditLog.swift */; };
 		F971DC6D613AB6BF680ED189 /* Client.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EC4C5F57C3153C8387F4206 /* Client.swift */; };
 		FC51E2512B1E31C93706CA35 /* AdditionalViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 593FCD41AFAD8354257A05DE /* AdditionalViews.swift */; };
+		FEBC353AF0524B49CEB08107 /* SessionLifecycleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB6BA7662C67C4AC3CD7DB9 /* SessionLifecycleUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -102,6 +103,7 @@
 		0AED3D05A46982DED1B5F496 /* Consent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Consent.swift; sourceTree = "<group>"; };
 		0CAA6FA333EBE0947402B172 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 		0CF06387AA1125A0B963104E /* OnboardingUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingUITests.swift; sourceTree = "<group>"; };
+		0FB6BA7662C67C4AC3CD7DB9 /* SessionLifecycleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLifecycleUITests.swift; sourceTree = "<group>"; };
 		0FCF4233970FC38F85A39CF1 /* Validators.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Validators.swift; sourceTree = "<group>"; };
 		10775D73E2ADDADBE80DF136 /* ConnectivityState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectivityState.swift; sourceTree = "<group>"; };
 		1398D7556E16DB890AAE61B2 /* ConsentFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsentFlowView.swift; sourceTree = "<group>"; };
@@ -306,6 +308,7 @@
 				C3E128DBA206FE219D527C71 /* ConsentSignatureUITests.swift */,
 				5FB35816B24CC29B29236138 /* HomeDashboardUITests.swift */,
 				0CF06387AA1125A0B963104E /* OnboardingUITests.swift */,
+				0FB6BA7662C67C4AC3CD7DB9 /* SessionLifecycleUITests.swift */,
 			);
 			name = UITests;
 			path = HCPilotAppTests/UITests;
@@ -533,6 +536,7 @@
 				89FA3CF2DAD78D4FD245EA6A /* ConsentSignatureUITests.swift in Sources */,
 				CFF6CABD9E72812B77DDAF20 /* HomeDashboardUITests.swift in Sources */,
 				84EB4B2027557D7949F6EA07 /* OnboardingUITests.swift in Sources */,
+				FEBC353AF0524B49CEB08107 /* SessionLifecycleUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

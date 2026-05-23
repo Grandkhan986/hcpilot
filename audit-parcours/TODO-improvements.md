@@ -218,6 +218,49 @@ d'origine, fichier(s) concerné(s), et la décision attendue côté fondateur.
 
 ---
 
+---
+
+## Parcours 5 — Session lifecycle
+
+### C-62 — Saisie clinique (vitals, drip rate) absente UI
+
+- **Sévérité** : CRITIQUE (déférée)
+- **Problème** : modèle backend a `pre_vitals`, `during_vitals`, `post_vitals`, `drip_rate` (jsonb libre) mais aucune UI pour les saisir. Le brief explicite cette saisie comme requise pour les sessions IV.
+- **Solution proposée** :
+  1. Vue dédiée `SessionVitalsView` accessible depuis SessionDetailView pendant in_progress
+  2. 3 sections (Pré / Pendant / Post) avec champs BP / HR / Sat O2 / Temp + champ libre
+  3. Save patche la session via `SessionPatch.preVitals` etc.
+- **Effort** : 4 h.
+
+### C-63 — Pas de génération d'invoice à la complétion
+
+- **Sévérité** : CRITIQUE (déférée — bloque Stripe)
+- **Problème** : `/sessions/{id}/complete` ne crée pas d'invoice. Le brief décrit le flow complet : complete → invoice.draft → paiement Stripe.
+- **Décision attendue** : intégrer Stripe Connect ou stub local en attendant ?
+- **Effort** : 6 h (avec Stripe) ou 1 h (stub local créant Invoice.draft).
+
+### H-64 — Confirm sur "Commencer la session"
+
+- **Sévérité** : HAUTE (déférée)
+- **Solution proposée** : confirmationDialog avant POST /start. Petit, 15 min.
+
+### H-67 — Timer en cours sur SessionDetailView
+
+- **Sévérité** : HAUTE (déférée)
+- **Solution proposée** : Si `session.startedAt != nil && status == .inProgress`, afficher `Text(startedAt, style: .timer)` sous le statut.
+- **Effort** : 15 min.
+
+### M-70 — Capturer cancellation_reason
+
+- **Solution proposée** : ajouter un TextField "Raison" dans le dialog d'annulation.
+- **Effort** : 30 min.
+
+### M-71 / M-72 / M-73 / B-74
+
+- Voir audit-parcours/05-session-lifecycle.md.
+
+---
+
 ## Tests UI fragiles à stabiliser
 
 ### UI-T1 — `test_onboarding_nominal_flow_reaches_done` (skip)

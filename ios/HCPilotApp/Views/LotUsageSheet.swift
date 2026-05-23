@@ -20,6 +20,14 @@ struct LotUsageSheet: View {
     @State private var isSubmitting = false
     @State private var errorMessage: String?
     @State private var filterToPreferred = true
+    @State private var showCancelConfirm = false
+    @State private var showSkipScanConfirm = false
+
+    /// Audit H-68 : true si l'utilisateur a commencé à saisir quelque chose qui
+    /// mérite confirmation avant fermeture.
+    private var hasUserInput: Bool {
+        selectedLotId != nil || !notes.isEmpty
+    }
 
     private var displayedLots: [InventoryLot] {
         let filtered = (filterToPreferred && preferredProductName != nil)
@@ -94,8 +102,38 @@ struct LotUsageSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") { dismiss() }
+                    Button("Annuler") {
+                        // Audit H-68 : confirm si lot sélectionné ou notes saisies
+                        if hasUserInput {
+                            showCancelConfirm = true
+                        } else {
+                            dismiss()
+                        }
+                    }
+                    .accessibilityIdentifier("lot.cancel")
                 }
+            }
+            .confirmationDialog(
+                "Abandonner la saisie ?",
+                isPresented: $showCancelConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Abandonner", role: .destructive) { dismiss() }
+                Button("Continuer la saisie", role: .cancel) {}
+            } message: {
+                Text("La session reste en cours. Vous pourrez la terminer plus tard.")
+            }
+            .confirmationDialog(
+                "Terminer sans enregistrer de lot ?",
+                isPresented: $showSkipScanConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Terminer sans lot", role: .destructive) {
+                    Task { await skipScan() }
+                }
+                Button("Choisir un lot", role: .cancel) {}
+            } message: {
+                Text("Sans lot, la traçabilité FDA est perdue. Utilisez uniquement si vous n'avez vraiment pas le lot consommé sous la main.")
             }
             .task { await loadLots() }
         }
@@ -117,14 +155,21 @@ struct LotUsageSheet: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
             .disabled(selectedLot == nil || isSubmitting)
+            .accessibilityIdentifier("lot.confirm")
 
+            // Audit H-65 : dégrader visuellement le skip-scan + exiger confirm
+            // explicite. La traçabilité FDA est trop importante pour un tap
+            // accidentel sur un gros bouton.
             Button {
-                Task { await skipScan() }
+                showSkipScanConfirm = true
             } label: {
                 Text("Terminer sans enregistrer de lot")
-                    .font(.caption)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .underline()
             }
             .disabled(isSubmitting)
+            .accessibilityIdentifier("lot.skipScan")
         }
         .padding(.horizontal)
         .padding(.bottom, 12)

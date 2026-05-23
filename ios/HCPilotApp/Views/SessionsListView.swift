@@ -239,6 +239,7 @@ struct SessionDetailView: View {
                         .background(Color.green)
                         .foregroundColor(.white)
                         .cornerRadius(8)
+                        .accessibilityIdentifier("session.start")
                     }
 
                     if session.status == .inProgress {
@@ -251,6 +252,7 @@ struct SessionDetailView: View {
                         .background(Color.blue)
                         .foregroundColor(.white)
                         .cornerRadius(8)
+                        .accessibilityIdentifier("session.complete")
                     }
                 }
             }
