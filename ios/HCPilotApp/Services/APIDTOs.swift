@@ -144,6 +144,20 @@ extension APIService {
         let nextAuditDate: String?
     }
 
+    /// H-104 — Patch d'un MD existant. Tous champs Optional (PATCH-like).
+    struct UpdateMedicalDirectorRequest: Encodable {
+        var firstName: String?
+        var lastName: String?
+        var email: String?
+        var licenseNumber: String?
+        var stateCode: String?
+        var contractStartDate: String?
+        var contractEndDate: String?
+        var auditFrequencyDays: Int?
+        var nextAuditDate: String?
+        var isActive: Bool?
+    }
+
     struct CreateStandingOrderRequest: Encodable {
         let formulationName: String
         let medicalDirectorId: String?

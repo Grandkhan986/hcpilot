@@ -584,6 +584,12 @@ class APIService {
         return try await put("/users/me/practice", body: payload)
     }
 
+    /// H-104 — Édition d'un MD existant. Permet le renouvellement de contrat,
+    /// la mise à jour des dates d'audit, et la désactivation (is_active=false).
+    func updateMedicalDirector(id: String, payload: UpdateMedicalDirectorRequest) async throws -> MedicalDirectorInfo {
+        return try await put("/compliance/medical_directors/\(id)", body: payload)
+    }
+
     func createMedicalDirector(_ payload: CreateMedicalDirectorRequest) async throws -> MedicalDirectorInfo {
         return try await post("/compliance/medical_directors", body: payload)
     }

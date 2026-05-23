@@ -6,6 +6,7 @@ import SwiftUI
 struct ComplianceDashboardView: View {
     @StateObject private var vm = ComplianceViewModel()
     @State private var showSetupWizard = false
+    @State private var mdToEdit: MedicalDirectorInfo?
 
     var body: some View {
         ScrollView {
@@ -20,7 +21,8 @@ struct ComplianceDashboardView: View {
                     )
                     MedicalDirectorCard(
                         md: dashboard.medicalDirector,
-                        onTapNeedsAction: { showSetupWizard = true }
+                        onTapNeedsAction: { showSetupWizard = true },
+                        onTapEdit: { md in mdToEdit = md }
                     )
                     StandingOrdersCard(
                         orders: dashboard.standingOrders,
@@ -52,6 +54,20 @@ struct ComplianceDashboardView: View {
                     await OnboardingState.shared.evaluate()
                 }
             })
+        }
+        .sheet(item: $mdToEdit) { md in
+            // H-104 — édition du MD courant. On considère "lastActive" si c'est
+            // l'unique MD actif retourné par /compliance/dashboard.
+            MedicalDirectorEditView(
+                md: md,
+                isLastActiveMD: vm.dashboard?.medicalDirector?.id == md.id,
+                onSaved: {
+                    Task {
+                        await vm.load()
+                        await OnboardingState.shared.evaluate()
+                    }
+                }
+            )
         }
     }
 }
@@ -147,6 +163,7 @@ private struct LicenseCard: View {
 private struct MedicalDirectorCard: View {
     let md: MedicalDirectorInfo?
     let onTapNeedsAction: () -> Void
+    let onTapEdit: (MedicalDirectorInfo) -> Void
 
     private var needsAction: Bool {
         if md == nil { return true }
@@ -191,18 +208,34 @@ private struct MedicalDirectorCard: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     }
-                    if needsAction {
+                    HStack(spacing: 8) {
+                        // H-104 — accès à l'édition MD existant (non visible
+                        // dans setup wizard re-create flow).
                         Button {
-                            onTapNeedsAction()
+                            onTapEdit(md)
                         } label: {
-                            Label("Mettre à jour", systemImage: "arrow.clockwise")
+                            Label("Modifier", systemImage: "pencil")
                                 .font(.caption.weight(.semibold))
                                 .padding(.horizontal, 10).padding(.vertical, 6)
-                                .background(Color.blue.opacity(0.15))
-                                .foregroundStyle(.blue)
+                                .background(Color(.systemGray5))
+                                .foregroundStyle(.primary)
                                 .clipShape(Capsule())
                         }
-                        .accessibilityIdentifier("compliance.md.action")
+                        .accessibilityIdentifier("compliance.md.edit")
+
+                        if needsAction {
+                            Button {
+                                onTapNeedsAction()
+                            } label: {
+                                Label("Mettre à jour", systemImage: "arrow.clockwise")
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(Color.blue.opacity(0.15))
+                                    .foregroundStyle(.blue)
+                                    .clipShape(Capsule())
+                            }
+                            .accessibilityIdentifier("compliance.md.action")
+                        }
                     }
                 }
             } else {

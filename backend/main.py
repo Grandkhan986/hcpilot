@@ -1687,6 +1687,51 @@ async def create_medical_director(
     return md
 
 
+class UpdateMedicalDirectorRequest(BaseModel):
+    """H-104 — Patch partiel d'un MD existant. Tous champs Optional →
+    `model_dump(exclude_none=True)` pour PATCH-like."""
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    license_number: Optional[str] = None
+    state_code: Optional[str] = None
+    contract_start_date: Optional[str] = None
+    contract_end_date: Optional[str] = None
+    audit_frequency_days: Optional[int] = None
+    next_audit_date: Optional[str] = None
+    is_active: Optional[bool] = None  # permet la désactivation
+
+
+@app.put("/compliance/medical_directors/{md_id}")
+async def update_medical_director(
+    md_id: str,
+    body: UpdateMedicalDirectorRequest,
+    request: Request,
+    payload: dict = Depends(verify_token),
+):
+    """H-104 — Édition d'un MD existant (renouvellement contrat, dates audit,
+    désactivation). RLS via nurse_id du JWT."""
+    nurse_id = payload.get("sub")
+    md = next(
+        (m for m in MOCK_MEDICAL_DIRECTORS if m["id"] == md_id and m["nurse_id"] == nurse_id),
+        None,
+    )
+    if not md:
+        raise HTTPException(status_code=404, detail="Medical Director non trouvé")
+    updates = body.model_dump(exclude_none=True)
+    md.update(updates)
+    md["updated_at"] = datetime.now().isoformat()
+    _log_audit(
+        nurse_id=nurse_id,
+        entity_type="medical_directors",
+        entity_id=md_id,
+        action="update",
+        changes=updates,
+        request=request,
+    )
+    return md
+
+
 class CreateStandingOrderRequest(BaseModel):
     formulation_name: str  # doit matcher un nom de FORMULATIONS (template)
     medical_director_id: Optional[str] = None  # défaut: le MD actif

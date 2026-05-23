@@ -22,6 +22,7 @@
 		2F792E26F17EE1EB24B61F73 /* ConnectivityState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10775D73E2ADDADBE80DF136 /* ConnectivityState.swift */; };
 		327BF7DB8FC80A0EEFD5B182 /* HCPilotApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBA76C5AD8AF900767A1A10 /* HCPilotApp.swift */; };
 		35EED2977DF5C206B4CFD578 /* InvoicePDFBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B4B70646F3EA75579DD811 /* InvoicePDFBuilder.swift */; };
+		36560BB84BE078B7C9F5A01B /* MedicalDirectorEditViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A864B94E5343FF7BD9AFA59D /* MedicalDirectorEditViewTests.swift */; };
 		41866FB1281A5A6D73FBC1F2 /* ValidatorsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1B42BBD417770BA894D0F0 /* ValidatorsTests.swift */; };
 		440EA6F95C2517FC20E54423 /* LotUsageSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBB65B7FBE988B37F269EE6F /* LotUsageSheet.swift */; };
 		4654A2CD557B5D48FF8E24F9 /* SessionUnauthorizedTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971764E1BC2246839AB9143E /* SessionUnauthorizedTests.swift */; };
@@ -62,6 +63,7 @@
 		9D4747B420D959569604E6E4 /* SecuritySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECF1CB11BA931481AF5E3F30 /* SecuritySettingsView.swift */; };
 		AC5F11CAFDE75CD5A7ECAFFD /* ClientFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EDEE6AF07CD63BB3FC1EE5E /* ClientFormView.swift */; };
 		AE98E190E9A278673EF4D658 /* VitalsEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 890F2D95718634ADA954CB5C /* VitalsEntryView.swift */; };
+		AF0A1EE4F92E62B19FC9C114 /* MedicalDirectorEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5076C6CD0AC9129B5C3BAB11 /* MedicalDirectorEditView.swift */; };
 		B227C2F9A778D01D637105C6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64FC888FAFB374CF3C73F11B /* ContentView.swift */; };
 		B2CBE96680965F9C40AF0415 /* VitalsEntryViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3730B1AF60B4E82AD8145E9F /* VitalsEntryViewTests.swift */; };
 		B32CD945707FE32F185F7AAA /* InventoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A41543D9FE376FAEF004CE3 /* InventoryDetailView.swift */; };
@@ -137,6 +139,7 @@
 		44508E295E7DC43AB58F6627 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		47BDCC4AF680BAC35E5EC347 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		4CC69ABE1BC918D8683F94F4 /* OfflineCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineCache.swift; sourceTree = "<group>"; };
+		5076C6CD0AC9129B5C3BAB11 /* MedicalDirectorEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicalDirectorEditView.swift; sourceTree = "<group>"; };
 		593FCD41AFAD8354257A05DE /* AdditionalViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdditionalViews.swift; sourceTree = "<group>"; };
 		5CC6F0CF78E1251EE1B4C1EE /* AuditLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditLogView.swift; sourceTree = "<group>"; };
 		5FB35816B24CC29B29236138 /* HomeDashboardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardUITests.swift; sourceTree = "<group>"; };
@@ -169,6 +172,7 @@
 		9D58C9CB15485D3876A629ED /* HomeViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModelTests.swift; sourceTree = "<group>"; };
 		9E938BA14366290CD5AD4F35 /* OnboardingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingState.swift; sourceTree = "<group>"; };
 		A62DA78CEBC549F848B7EE54 /* BarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeScannerView.swift; sourceTree = "<group>"; };
+		A864B94E5343FF7BD9AFA59D /* MedicalDirectorEditViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicalDirectorEditViewTests.swift; sourceTree = "<group>"; };
 		A922510000B9F87A8F704EDF /* ProfileSettingsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSettingsUITests.swift; sourceTree = "<group>"; };
 		A9D74B22935B9CBF54A77567 /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
 		AA6874ED1F8085A6B93D787F /* MutationQueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MutationQueueView.swift; sourceTree = "<group>"; };
@@ -228,6 +232,7 @@
 				B8626ACF93B2719A1518FE61 /* LegalDocsView.swift */,
 				47BDCC4AF680BAC35E5EC347 /* LoginView.swift */,
 				DBB65B7FBE988B37F269EE6F /* LotUsageSheet.swift */,
+				5076C6CD0AC9129B5C3BAB11 /* MedicalDirectorEditView.swift */,
 				AA6874ED1F8085A6B93D787F /* MutationQueueView.swift */,
 				DFA05924FBA4178EA61F8BBC /* NotificationsView.swift */,
 				29152DF7F8E22F3D210F5966 /* ProfileView.swift */,
@@ -306,6 +311,7 @@
 				9D58C9CB15485D3876A629ED /* HomeViewModelTests.swift */,
 				AD83D4FBEAB5C63DF7D0493B /* InvoiceCodableTests.swift */,
 				BFEB9C21131F70E189A3CD05 /* InvoicePDFBuilderTests.swift */,
+				A864B94E5343FF7BD9AFA59D /* MedicalDirectorEditViewTests.swift */,
 				8BEEF9E56C5EAB0F8AE21C8E /* MutationQueueDedupeTests.swift */,
 				76030F8E90BF2142A1ACE2F4 /* MutationQueueTests.swift */,
 				7A2135761FC6961DB184AA04 /* OfflineCacheTests.swift */,
@@ -536,6 +542,7 @@
 				9B398A469773C25CE5A0C9F0 /* LoginView.swift in Sources */,
 				440EA6F95C2517FC20E54423 /* LotUsageSheet.swift in Sources */,
 				70EB0608E7666EC460903327 /* LowStockSheet.swift in Sources */,
+				AF0A1EE4F92E62B19FC9C114 /* MedicalDirectorEditView.swift in Sources */,
 				8175E719B95D7573825A3B47 /* MutationQueue.swift in Sources */,
 				00D1E994F3E374F8A6AAC5A4 /* MutationQueueView.swift in Sources */,
 				987B5F390752C24FDEE0286B /* NetworkInfo.swift in Sources */,
@@ -568,6 +575,7 @@
 				B8085430FAA70E35DA83DA4B /* HomeViewModelTests.swift in Sources */,
 				9BE73BFAF47590ACAFA9BD8E /* InvoiceCodableTests.swift in Sources */,
 				B9025DB6D664DDD36273CA51 /* InvoicePDFBuilderTests.swift in Sources */,
+				36560BB84BE078B7C9F5A01B /* MedicalDirectorEditViewTests.swift in Sources */,
 				8508DBFEF1D7D08A09F396FC /* MutationQueueDedupeTests.swift in Sources */,
 				89822B4E7B011EEACE8A76D4 /* MutationQueueTests.swift in Sources */,
 				C11D2168B10E3895C774A863 /* OfflineCacheTests.swift in Sources */,
