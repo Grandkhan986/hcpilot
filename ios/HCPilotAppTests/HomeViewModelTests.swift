@@ -92,6 +92,62 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertEqual(vm.displayName, "soignant")
     }
 
+    @MainActor
+    func test_setUser_strips_dr_prefix_from_cached_fullname() {
+        let vm = HomeViewModel()
+        let user = UserProfile(
+            id: "u1",
+            email: "x@y.com",
+            fullName: "Dr. Marie Dupont",
+            role: "provider",
+            specialty: nil,
+            phone: nil,
+            avatarUrl: nil,
+            settings: nil
+        )
+        vm.setUser(user)
+        XCTAssertEqual(vm.firstName, "Marie")
+        XCTAssertEqual(vm.lastName, "Dupont")
+    }
+
+    @MainActor
+    func test_setUser_keeps_full_name_when_no_honorific() {
+        let vm = HomeViewModel()
+        let user = UserProfile(
+            id: "u1",
+            email: "x@y.com",
+            fullName: "Sarah Johnson",
+            role: "provider",
+            specialty: nil,
+            phone: nil,
+            avatarUrl: nil,
+            settings: nil
+        )
+        vm.setUser(user)
+        XCTAssertEqual(vm.firstName, "Sarah")
+        XCTAssertEqual(vm.lastName, "Johnson")
+    }
+
+    @MainActor
+    func test_setUser_handles_other_honorifics() {
+        let vm = HomeViewModel()
+        for prefix in ["Mr.", "Mrs.", "Ms.", "M.", "Mme", "Mlle"] {
+            let user = UserProfile(
+                id: "u1",
+                email: "x@y.com",
+                fullName: "\(prefix) Anna Lee",
+                role: "provider",
+                specialty: nil,
+                phone: nil,
+                avatarUrl: nil,
+                settings: nil
+            )
+            vm.setUser(user)
+            XCTAssertEqual(vm.firstName, "Anna", "prefix \(prefix)")
+            XCTAssertEqual(vm.lastName, "Lee", "prefix \(prefix)")
+        }
+    }
+
     // MARK: - Start button state
 
     @MainActor

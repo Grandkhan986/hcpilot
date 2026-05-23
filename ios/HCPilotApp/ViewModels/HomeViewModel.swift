@@ -223,10 +223,25 @@ class HomeViewModel: ObservableObject {
 
     func setUser(_ user: UserProfile?) {
         guard let user = user else {
-            firstName = "Docteur"
+            firstName = "soignant"
+            lastName = ""
             return
         }
-        let parts = user.fullName.split(separator: " ", maxSplits: 1).map(String.init)
+        // Strip leading honorifics — un fullName peut hériter d'un préfixe
+        // historique ("Dr. Marie Dupont") même quand le titre ne correspond
+        // pas au licenseType réel (cas du profil persistant en Keychain qui
+        // survit aux changements de seed côté backend). Le préfixe « Dr. » est
+        // ré-appliqué côté `displayName` selon le licenseType courant.
+        var name = user.fullName.trimmingCharacters(in: .whitespaces)
+        let honorifics = ["Dr.", "Dr", "Mr.", "Mr", "Mrs.", "Ms.", "M.", "Mme", "Mlle"]
+        for h in honorifics {
+            let prefix = h + " "
+            if name.lowercased().hasPrefix(prefix.lowercased()) {
+                name = String(name.dropFirst(prefix.count)).trimmingCharacters(in: .whitespaces)
+                break
+            }
+        }
+        let parts = name.split(separator: " ", maxSplits: 1).map(String.init)
         firstName = parts.first ?? user.fullName
         lastName = parts.count > 1 ? parts[1] : ""
     }
