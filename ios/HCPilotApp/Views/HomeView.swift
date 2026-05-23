@@ -91,6 +91,7 @@ struct HomeView: View {
                 )
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("home.kpi.revenue")
 
             NavigationLink(destination: SessionsListView()) {
                 StatCard(
@@ -101,6 +102,7 @@ struct HomeView: View {
                 )
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("home.kpi.sessions")
 
             Button { navigateToCompliance = true } label: {
                 ComplianceTile(
@@ -109,6 +111,7 @@ struct HomeView: View {
                 )
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("home.kpi.compliance")
         }
         .padding(.horizontal)
     }
@@ -185,7 +188,16 @@ struct HomeView: View {
                 emptyTodayCard
             } else {
                 ForEach(viewModel.todaySessions) { session in
-                    SessionListItem(session: session)
+                    // Audit C-19 : SessionListItem doit être cliquable depuis
+                    // l'accueil — c'est le point d'entrée principal pour
+                    // reprendre une session après interruption.
+                    NavigationLink {
+                        SessionDetailView(session: session, onAction: { viewModel.refresh() })
+                    } label: {
+                        SessionListItem(session: session)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("home.todaySession.\(session.id)")
                 }
             }
         }
@@ -234,7 +246,13 @@ struct HomeView: View {
                 }
             } else {
                 ForEach(viewModel.upcomingSessions) { session in
-                    SessionListItem(session: session)
+                    NavigationLink {
+                        SessionDetailView(session: session, onAction: { viewModel.refresh() })
+                    } label: {
+                        SessionListItem(session: session)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("home.upcomingSession.\(session.id)")
                 }
             }
         }
@@ -310,6 +328,7 @@ struct HomeView: View {
                             StockStatusCard(item: item)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier("home.lowStock.\(item.productName)")
                     }
                 }
             }

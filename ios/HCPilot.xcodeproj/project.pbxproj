@@ -58,6 +58,7 @@
 		C6007E5B1729703D6A73DE63 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D74B22935B9CBF54A77567 /* HomeViewModel.swift */; };
 		C80D1CC3E2B13207ED698A1E /* BarcodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A62DA78CEBC549F848B7EE54 /* BarcodeScannerView.swift */; };
 		CC1A5A8097A7E57BBCA54FE5 /* ComplianceTile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79DA9E03E0E692E2CB2B017A /* ComplianceTile.swift */; };
+		CFF6CABD9E72812B77DDAF20 /* HomeDashboardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FB35816B24CC29B29236138 /* HomeDashboardUITests.swift */; };
 		D11FDCBD82435D9B4869088C /* OfflineCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC69ABE1BC918D8683F94F4 /* OfflineCache.swift */; };
 		D2D5FACFCFCB38557D4A933F /* Consent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AED3D05A46982DED1B5F496 /* Consent.swift */; };
 		D2F0A9319F551204A5318571 /* SessionsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6B072C0BE357BE5C6C93C04 /* SessionsListView.swift */; };
@@ -117,6 +118,7 @@
 		4CC69ABE1BC918D8683F94F4 /* OfflineCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineCache.swift; sourceTree = "<group>"; };
 		593FCD41AFAD8354257A05DE /* AdditionalViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdditionalViews.swift; sourceTree = "<group>"; };
 		5CC6F0CF78E1251EE1B4C1EE /* AuditLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditLogView.swift; sourceTree = "<group>"; };
+		5FB35816B24CC29B29236138 /* HomeDashboardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardUITests.swift; sourceTree = "<group>"; };
 		627009E0153837A18145BB56 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		62E639CF608C792A2E21318D /* AppMainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMainView.swift; sourceTree = "<group>"; };
 		6396D0BC4152E3C360DFD23D /* ReportsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportsView.swift; sourceTree = "<group>"; };
@@ -296,6 +298,7 @@
 		99F64E7C6BA0D18DCD518252 /* UITests */ = {
 			isa = PBXGroup;
 			children = (
+				5FB35816B24CC29B29236138 /* HomeDashboardUITests.swift */,
 				0CF06387AA1125A0B963104E /* OnboardingUITests.swift */,
 			);
 			name = UITests;
@@ -520,6 +523,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CFF6CABD9E72812B77DDAF20 /* HomeDashboardUITests.swift in Sources */,
 				84EB4B2027557D7949F6EA07 /* OnboardingUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

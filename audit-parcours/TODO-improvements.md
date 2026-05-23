@@ -76,6 +76,54 @@ d'origine, fichier(s) concerné(s), et la décision attendue côté fondateur.
 
 ---
 
+---
+
+## Parcours 2 — Accueil dashboard
+
+### H-20 — Lifecycle `en_route` manquant
+
+- **Sévérité** : HAUTE
+- **Problème** : `POST /sessions/{id}/start` passe directement de `scheduled` à `in_progress`. Le brief définit l'étape intermédiaire `en_route` ("nurse part vers le client"). Manque endpoint backend + bouton UI.
+- **Solution proposée** : ajouter `POST /sessions/{id}/en_route` côté backend, ajouter un bouton "Je pars" dans SessionDetailView, et faire en sorte que la home "Commencer la journée" déclenche en_route.
+- **Effort** : 2 h.
+
+### H-23 — Badge sync ne s'auto-update pas entre les refreshes
+
+- **Sévérité** : HAUTE
+- **Problème** : Le label "Sync il y a Xm" est calculé au render. Sans déclencheur (refresh), il reste figé même si le temps passe.
+- **Solution proposée** : ajouter un `Timer.publish(every: 60, ...)` dans `SyncStatusBadge` pour forcer un re-render.
+- **Effort** : 15 min.
+
+### H-29 — Pas de légende sur la mini-carte
+
+- **Sévérité** : HAUTE
+- **Problème** : Linda ne sait pas ce que représentent les markers numérotés et la polyline rouge.
+- **Solution proposée** : petit footer texte sous la carte type "Trajet optimisé · 4 stops" et tap sur marker → label.
+- **Effort** : 30 min.
+
+### H-30 — Tooltip / aperçu sur "Conformité X urgents"
+
+- **Sévérité** : HAUTE
+- **Solution proposée** : sous le label "3 urgents", lister en très petit les 1-3 alertes les plus critiques (genre "Licence expire dans 12j · Standing order Myers expire dans 5j").
+- **Effort** : 1 h.
+
+### M-24, M-25, M-26 — Friction tap marker / pull-to-refresh / nav LowStockSheet
+
+- **Sévérité** : MOYENNE
+- Effort total : 1 h 30.
+
+### M-31, M-32 — Période des KPI
+
+- **Solution proposée** : préciser "Revenu du mois" / "Sessions du jour" sous le chiffre en très petit.
+- **Effort** : 10 min. (note : déjà raccourci pour gagner de l'espace dans le patch précédent — à reconsidérer.)
+
+### B-33, B-34, B-35 — Polish
+
+- Wrap date, tooltip conformité, légende polyline.
+- Effort total : 30 min.
+
+---
+
 ## Tests UI fragiles à stabiliser
 
 ### UI-T1 — `test_onboarding_nominal_flow_reaches_done` (skip)
