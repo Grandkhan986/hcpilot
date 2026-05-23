@@ -296,6 +296,41 @@ d'origine, fichier(s) concerné(s), et la décision attendue côté fondateur.
 
 ---
 
+---
+
+## Parcours 7 — Compliance dashboard
+
+### H-88 — Loading state sur "Vu" (acknowledge alerte)
+
+- **Sévérité** : HAUTE (déférée)
+- **Solution proposée** : while acknowledging, le bouton affiche un ProgressView ; en cas d'erreur, restaurer + toast.
+- **Effort** : 20 min.
+
+### M-90 — Historique des alertes acknowledged
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : disclosure "Voir les alertes résolues" sous AlertsCard, montrant les 10 dernières.
+- **Effort** : 30 min.
+
+### M-91 — "Notifier mon MD par email" sur contrat critical
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : ajouter un secondary button "Envoyer un rappel au MD" → mailto: ou backend `/compliance/medical_directors/{id}/remind`.
+- **Effort** : 1 h (avec endpoint backend).
+
+### M-92 — Tooltip "Qu'est-ce que l'audit MD ?"
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : icon `.info.circle` cliquable ouvrant une sheet explicative.
+- **Effort** : 20 min.
+
+### B-93 — Spinner pull-to-refresh
+
+- **Sévérité** : BASSE
+- **Note** : `.refreshable` SwiftUI inclut déjà le spinner natif, peut-être suffisant.
+
+---
+
 ## Tests UI fragiles à stabiliser
 
 ### UI-T1 — `test_onboarding_nominal_flow_reaches_done` (skip)

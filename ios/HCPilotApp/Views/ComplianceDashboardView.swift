@@ -5,18 +5,27 @@ import SwiftUI
 /// En lecture seule pour cette première tranche.
 struct ComplianceDashboardView: View {
     @StateObject private var vm = ComplianceViewModel()
+    @State private var showSetupWizard = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if vm.isLoading {
                     ProgressView().frame(maxWidth: .infinity).padding(.vertical, 60)
+                        .accessibilityIdentifier("compliance.loading")
                 } else if let dashboard = vm.dashboard {
-                    LicenseCard(license: dashboard.license)
-                    MedicalDirectorCard(md: dashboard.medicalDirector)
+                    LicenseCard(
+                        license: dashboard.license,
+                        onTapNeedsAction: { showSetupWizard = true }
+                    )
+                    MedicalDirectorCard(
+                        md: dashboard.medicalDirector,
+                        onTapNeedsAction: { showSetupWizard = true }
+                    )
                     StandingOrdersCard(
                         orders: dashboard.standingOrders,
-                        expiringSoon: dashboard.standingOrdersExpiringSoon
+                        expiringSoon: dashboard.standingOrdersExpiringSoon,
+                        onTapNeedsAction: { showSetupWizard = true }
                     )
                     AlertsCard(
                         alerts: dashboard.alerts,
@@ -36,6 +45,9 @@ struct ComplianceDashboardView: View {
         .navigationBarTitleDisplayMode(.large)
         .task { await vm.load() }
         .refreshable { await vm.load() }
+        .sheet(isPresented: $showSetupWizard) {
+            SetupWizardView(onCompleted: { Task { await vm.load() } })
+        }
     }
 }
 
@@ -43,6 +55,11 @@ struct ComplianceDashboardView: View {
 
 private struct LicenseCard: View {
     let license: LicenseInfo?
+    let onTapNeedsAction: () -> Void
+
+    private var needsAction: Bool {
+        license == nil || (license?.status != nil && license!.status != .ok && license!.status != .unknown)
+    }
 
     var body: some View {
         ComplianceCard(title: "Ma Licence", systemImage: "person.crop.rectangle.badge.checkmark") {
@@ -71,12 +88,41 @@ private struct LicenseCard: View {
                                 .foregroundStyle(colorForStatus(license.status))
                         }
                     }
+                    // Audit C-85 : CTA visible si action requise
+                    if needsAction {
+                        Button {
+                            onTapNeedsAction()
+                        } label: {
+                            Label("Renouveler la licence", systemImage: "arrow.clockwise")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.15))
+                                .foregroundStyle(.blue)
+                                .clipShape(Capsule())
+                        }
+                        .accessibilityIdentifier("compliance.license.action")
+                    }
                 }
             } else {
-                Text("Aucune licence configurée.")
-                    .font(.caption).foregroundStyle(.secondary)
+                // Audit H-86 : empty state avec CTA Configurer
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Aucune licence configurée.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Button {
+                        onTapNeedsAction()
+                    } label: {
+                        Label("Configurer ma licence", systemImage: "plus.circle")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 10).padding(.vertical, 6)
+                            .background(Color.blue.opacity(0.15))
+                            .foregroundStyle(.blue)
+                            .clipShape(Capsule())
+                    }
+                    .accessibilityIdentifier("compliance.license.configure")
+                }
             }
         }
+        .accessibilityIdentifier("compliance.card.license")
     }
 
     private func remainingLabel(days: Int) -> String {
@@ -95,6 +141,14 @@ private struct LicenseCard: View {
 
 private struct MedicalDirectorCard: View {
     let md: MedicalDirectorInfo?
+    let onTapNeedsAction: () -> Void
+
+    private var needsAction: Bool {
+        if md == nil { return true }
+        if let s = md?.contractStatus, s != .ok && s != .unknown { return true }
+        if let s = md?.nextAuditStatus, s != .ok && s != .unknown { return true }
+        return false
+    }
 
     var body: some View {
         ComplianceCard(title: "Medical Director", systemImage: "stethoscope") {
@@ -113,14 +167,15 @@ private struct MedicalDirectorCard: View {
                     Divider()
                     HStack(spacing: 12) {
                         if let endDate = md.contractEndDate {
-                            Label("Contrat jusqu'au \(endDate)", systemImage: "doc.text")
+                            // Audit H-89 : format date FR-friendly
+                            Label("Contrat jusqu'au \(LicenseCard.dateFmt.string(from: endDate))", systemImage: "doc.text")
                                 .font(.caption)
                         }
                     }
                     if let audit = md.nextAuditDate {
                         HStack(spacing: 8) {
                             Image(systemName: "calendar.badge.exclamationmark")
-                            Text("Prochain audit : \(audit)")
+                            Text("Prochain audit : \(LicenseCard.dateFmt.string(from: audit))")
                             Spacer()
                             if let s = md.nextAuditStatus {
                                 Text(statusLabel(s))
@@ -131,18 +186,46 @@ private struct MedicalDirectorCard: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     }
+                    if needsAction {
+                        Button {
+                            onTapNeedsAction()
+                        } label: {
+                            Label("Mettre à jour", systemImage: "arrow.clockwise")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.15))
+                                .foregroundStyle(.blue)
+                                .clipShape(Capsule())
+                        }
+                        .accessibilityIdentifier("compliance.md.action")
+                    }
                 }
             } else {
-                Text("Aucun Medical Director configuré.")
-                    .font(.caption).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Aucun Medical Director configuré.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Button {
+                        onTapNeedsAction()
+                    } label: {
+                        Label("Configurer mon MD", systemImage: "plus.circle")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 10).padding(.vertical, 6)
+                            .background(Color.blue.opacity(0.15))
+                            .foregroundStyle(.blue)
+                            .clipShape(Capsule())
+                    }
+                    .accessibilityIdentifier("compliance.md.configure")
+                }
             }
         }
+        .accessibilityIdentifier("compliance.card.md")
     }
 }
 
 private struct StandingOrdersCard: View {
     let orders: [StandingOrderInfo]
     let expiringSoon: Int
+    let onTapNeedsAction: () -> Void
 
     var body: some View {
         ComplianceCard(title: "Standing Orders", systemImage: "doc.text.fill") {
@@ -159,8 +242,21 @@ private struct StandingOrdersCard: View {
                 }
                 Divider()
                 if orders.isEmpty {
-                    Text("Aucune standing order active.")
-                        .font(.caption).foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Aucune standing order active.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Button {
+                            onTapNeedsAction()
+                        } label: {
+                            Label("Ajouter une standing order", systemImage: "plus.circle")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.15))
+                                .foregroundStyle(.blue)
+                                .clipShape(Capsule())
+                        }
+                        .accessibilityIdentifier("compliance.so.configure")
+                    }
                 } else {
                     ForEach(orders) { order in
                         HStack {
@@ -178,10 +274,25 @@ private struct StandingOrdersCard: View {
                             Spacer()
                         }
                         .padding(.vertical, 4)
+                        .accessibilityIdentifier("compliance.so.\(order.id)")
+                    }
+                    if expiringSoon > 0 {
+                        Button {
+                            onTapNeedsAction()
+                        } label: {
+                            Label("Renouveler", systemImage: "arrow.clockwise")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.15))
+                                .foregroundStyle(.blue)
+                                .clipShape(Capsule())
+                        }
+                        .accessibilityIdentifier("compliance.so.action")
                     }
                 }
             }
         }
+        .accessibilityIdentifier("compliance.card.so")
     }
 }
 
@@ -212,6 +323,7 @@ private struct AlertsCard: View {
                                 Button("Vu") { onAcknowledge(alert.id) }
                                     .font(.caption)
                                     .buttonStyle(.bordered)
+                                    .accessibilityIdentifier("compliance.alert.\(alert.id).ack")
                             } else {
                                 Image(systemName: "checkmark.circle")
                                     .foregroundStyle(.green)
@@ -229,6 +341,7 @@ private struct AlertsCard: View {
                 }
             }
         }
+        .accessibilityIdentifier("compliance.card.alerts")
     }
 }
 

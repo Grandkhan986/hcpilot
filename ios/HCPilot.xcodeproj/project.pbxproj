@@ -32,6 +32,7 @@
 		616EC2C2F09A2A1EA56F2A10 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29152DF7F8E22F3D210F5966 /* ProfileView.swift */; };
 		6DD2DA60AD37CC1E15891718 /* ComplianceDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9E4784C59A03E574D23CF8C /* ComplianceDashboardView.swift */; };
 		70EB0608E7666EC460903327 /* LowStockSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F2631E977A59E57CF5C23D6 /* LowStockSheet.swift */; };
+		71891B4A70B7F264274D981C /* ComplianceDashboardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC8490829C0AA5DCD3F63E84 /* ComplianceDashboardUITests.swift */; };
 		7256B32D534745BE46268BC5 /* APIDTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D273D1208167485D69DE1C9 /* APIDTOs.swift */; };
 		73FA05B818A35AF4E78A182B /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016D363586EE716D83B0B563 /* AuthViewModel.swift */; };
 		7682B30ADA57EF57B75DF8BE /* InventoryLotUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C79A43452DEB9E8540649179 /* InventoryLotUITests.swift */; };
@@ -164,6 +165,7 @@
 		DFA05924FBA4178EA61F8BBC /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
 		E4183E53C2F7AA6B0C625834 /* ClientCreationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientCreationUITests.swift; sourceTree = "<group>"; };
 		E6B072C0BE357BE5C6C93C04 /* SessionsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionsListView.swift; sourceTree = "<group>"; };
+		EC8490829C0AA5DCD3F63E84 /* ComplianceDashboardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComplianceDashboardUITests.swift; sourceTree = "<group>"; };
 		ECF1CB11BA931481AF5E3F30 /* SecuritySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecuritySettingsView.swift; sourceTree = "<group>"; };
 		F5F1B358CACE5A26BF5275C2 /* SessionFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionFormView.swift; sourceTree = "<group>"; };
 		F9E4784C59A03E574D23CF8C /* ComplianceDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComplianceDashboardView.swift; sourceTree = "<group>"; };
@@ -307,6 +309,7 @@
 			isa = PBXGroup;
 			children = (
 				E4183E53C2F7AA6B0C625834 /* ClientCreationUITests.swift */,
+				EC8490829C0AA5DCD3F63E84 /* ComplianceDashboardUITests.swift */,
 				C3E128DBA206FE219D527C71 /* ConsentSignatureUITests.swift */,
 				5FB35816B24CC29B29236138 /* HomeDashboardUITests.swift */,
 				C79A43452DEB9E8540649179 /* InventoryLotUITests.swift */,
@@ -536,6 +539,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				78B686C32BC2407F8FCEF4D0 /* ClientCreationUITests.swift in Sources */,
+				71891B4A70B7F264274D981C /* ComplianceDashboardUITests.swift in Sources */,
 				89FA3CF2DAD78D4FD245EA6A /* ConsentSignatureUITests.swift in Sources */,
 				CFF6CABD9E72812B77DDAF20 /* HomeDashboardUITests.swift in Sources */,
 				7682B30ADA57EF57B75DF8BE /* InventoryLotUITests.swift in Sources */,
