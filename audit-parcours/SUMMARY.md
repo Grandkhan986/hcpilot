@@ -114,10 +114,12 @@ Lecture détaillée dans [TODO-improvements.md](TODO-improvements.md).
 
 ### Avant un test utilisateur réel — bloqueurs
 
-1. **C-62** : Implémenter au minimum une UI de saisie de notes cliniques + drip rate sur SessionDetailView en mode `in_progress`. Les vitals peuvent être différés à une 2ᵉ release.
-2. **C-63** : Stub local Invoice.draft à la complétion d'une session (1 h de travail). Le flow Stripe complet peut suivre.
-3. **C-01** : Gate first-launch — décider entre `@AppStorage("hasCompletedOnboarding")` (rapide) ou détection backend (robuste). Sans ça, une nouvelle nurse n'arrive jamais sur le wizard.
-4. **H-104** : `MedicalDirectorEditView` — sans ça, la nurse ne peut pas mettre à jour le contrat MD lorsqu'il arrive à terme. Bloque la conformité long terme.
+1. **~~C-62~~** ✅ **Résolu** ([6084153f](https://github.com/Grandkhan986/hcpilot/commit/6084153f)) — `VitalsEntryView` complète (3 sections horodatées Pré/Pendant/Post + validation anormale).
+2. **~~C-63~~** ✅ **Résolu** ([44ced3c9](https://github.com/Grandkhan986/hcpilot/commit/44ced3c9)) — Génération PDF stub à la complétion de session, bouton "Voir la facture" sur SessionDetailView.
+3. **~~C-01~~** ✅ **Résolu** ([767ae5b5](https://github.com/Grandkhan986/hcpilot/commit/767ae5b5)) — Gate first-launch combinant cache local + évaluation backend ; reprise step persistée en cas de force-close.
+4. **~~H-104~~** ✅ **Résolu** ([87f3efaf](https://github.com/Grandkhan986/hcpilot/commit/87f3efaf)) — `MedicalDirectorEditView` + endpoint backend `PUT /v1/compliance/medical_directors/{id}` + désactivation soft delete.
+
+**Rapport complet de cette série** : [`4-critiques-deferes-rapport.md`](../4-critiques-deferes-rapport.md).
 
 ### Avant la mise en production
 
