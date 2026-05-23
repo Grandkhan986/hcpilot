@@ -150,14 +150,23 @@ struct FlowLayout: Layout {
 }
 
 /// Suggestions brief-aligned (§création client : "chips prédéfinies").
+/// Fork A Lot 2 / M-46 : presets étoffés pour couvrir les cas remontés
+/// pendant l'audit (Diabète T1, Hépatites, VIH, cancers, MICI, etc.).
 enum ChipPresets {
     static let allergies = [
         "Pénicilline", "Latex", "Iode", "Aspirine", "Sulfamides",
-        "Fruits à coque", "Œufs", "Poisson/Fruits de mer", "Anesthésie locale",
+        "Fruits à coque", "Arachides", "Œufs", "Poisson/Fruits de mer",
+        "Anesthésie locale", "Contrastes iodés", "AINS", "Céphalosporines",
+        "Soja", "Gluten",
     ]
     static let medicalConditions = [
-        "Diabète type 2", "Hypertension", "Asthme", "BPCO",
-        "Insuffisance cardiaque", "Insuffisance rénale", "Grossesse",
-        "Dépression", "Anxiété", "Hypothyroïdie",
+        "Diabète type 1", "Diabète type 2", "Hypertension", "Asthme", "BPCO",
+        "Insuffisance cardiaque", "Insuffisance rénale", "Insuffisance hépatique",
+        "Hépatite B", "Hépatite C", "VIH", "Cancer en rémission", "Cancer actif",
+        "Lupus", "Sclérose en plaques", "MICI",
+        "Grossesse", "Allaitement",
+        "Dépression", "Anxiété", "Trouble bipolaire",
+        "Hypothyroïdie", "Hyperthyroïdie",
+        "Arthrite rhumatoïde", "Fibromyalgie", "Migraine chronique",
     ]
 }
