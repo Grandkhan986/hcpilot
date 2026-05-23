@@ -34,6 +34,7 @@
 		70EB0608E7666EC460903327 /* LowStockSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F2631E977A59E57CF5C23D6 /* LowStockSheet.swift */; };
 		7256B32D534745BE46268BC5 /* APIDTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D273D1208167485D69DE1C9 /* APIDTOs.swift */; };
 		73FA05B818A35AF4E78A182B /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016D363586EE716D83B0B563 /* AuthViewModel.swift */; };
+		78B686C32BC2407F8FCEF4D0 /* ClientCreationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4183E53C2F7AA6B0C625834 /* ClientCreationUITests.swift */; };
 		78E6CEBF17D65809D12F2DBE /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B54EFFAF411540FE9B98D8C /* User.swift */; };
 		7FDFEA4958061B99CE1B383E /* SupplierSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E88B4C86E86DA627EBC2C56 /* SupplierSettingsView.swift */; };
 		8175E719B95D7573825A3B47 /* MutationQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 095921805606A482EFB242F9 /* MutationQueue.swift */; };
@@ -155,6 +156,7 @@
 		DB39FC80B037368C4A32EA5D /* AddLotFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddLotFlow.swift; sourceTree = "<group>"; };
 		DBB65B7FBE988B37F269EE6F /* LotUsageSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LotUsageSheet.swift; sourceTree = "<group>"; };
 		DFA05924FBA4178EA61F8BBC /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
+		E4183E53C2F7AA6B0C625834 /* ClientCreationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientCreationUITests.swift; sourceTree = "<group>"; };
 		E6B072C0BE357BE5C6C93C04 /* SessionsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionsListView.swift; sourceTree = "<group>"; };
 		ECF1CB11BA931481AF5E3F30 /* SecuritySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecuritySettingsView.swift; sourceTree = "<group>"; };
 		F5F1B358CACE5A26BF5275C2 /* SessionFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionFormView.swift; sourceTree = "<group>"; };
@@ -298,6 +300,7 @@
 		99F64E7C6BA0D18DCD518252 /* UITests */ = {
 			isa = PBXGroup;
 			children = (
+				E4183E53C2F7AA6B0C625834 /* ClientCreationUITests.swift */,
 				5FB35816B24CC29B29236138 /* HomeDashboardUITests.swift */,
 				0CF06387AA1125A0B963104E /* OnboardingUITests.swift */,
 			);
@@ -523,6 +526,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				78B686C32BC2407F8FCEF4D0 /* ClientCreationUITests.swift in Sources */,
 				CFF6CABD9E72812B77DDAF20 /* HomeDashboardUITests.swift in Sources */,
 				84EB4B2027557D7949F6EA07 /* OnboardingUITests.swift in Sources */,
 			);

@@ -2,6 +2,14 @@ import SwiftUI
 
 /// Formulaire client — création ou édition. Aligné sur le brief schema :
 /// adresse splittée en 5 champs, allergies/medications/medicalConditions en arrays.
+///
+/// Audit parcours 3 (`audit-parcours/03-client-creation.md`) :
+/// - DOB en DatePicker (H-36)
+/// - Validation email + phone US (H-37/H-38)
+/// - Gender étendu (H-39)
+/// - stateCode en Picker (H-40)
+/// - accessibilityIdentifier (H-41)
+/// - Confirm "Annuler" si dirty (H-42)
 struct ClientFormView: View {
     enum Mode {
         case create
@@ -17,17 +25,16 @@ struct ClientFormView: View {
     @State private var lastName: String = ""
     @State private var email: String = ""
     @State private var phone: String = ""
-    @State private var dateOfBirth: String = ""
+    @State private var dateOfBirth: Date? = nil
     @State private var gender: String = ""
     // Adresse splittée
     @State private var addressLine1: String = ""
     @State private var addressLine2: String = ""
     @State private var city: String = ""
-    @State private var stateCode: String = ""
+    @State private var stateCode: String = "CA"
     @State private var postalCode: String = ""
     @State private var accessNotes: String = ""
-    // Médical — chips multi-select pour allergies/conditions (brief §création
-    // client), saisie libre CSV pour médications (trop varié pour prédéfinir).
+    // Médical
     @State private var allergies: [String] = []
     @State private var medicalConditions: [String] = []
     @State private var medicationsStr: String = ""
@@ -38,6 +45,7 @@ struct ClientFormView: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var infoMessage: String?
+    @State private var showCancelConfirm = false
 
     private var title: String {
         switch mode {
@@ -46,41 +54,114 @@ struct ClientFormView: View {
         }
     }
 
+    /// Audit H-37/H-38 : un client peut laisser email/phone vides, mais si
+    /// remplis, ils doivent être valides.
+    private var emailIsValidOrEmpty: Bool {
+        email.isEmpty || Validators.isValidEmail(email)
+    }
+
+    private var phoneIsValidOrEmpty: Bool {
+        phone.isEmpty || Validators.isValidPhoneUS(phone)
+    }
+
+    private var canSave: Bool {
+        !firstName.trimmingCharacters(in: .whitespaces).isEmpty
+            && !lastName.trimmingCharacters(in: .whitespaces).isEmpty
+            && emailIsValidOrEmpty
+            && phoneIsValidOrEmpty
+            && !isSaving
+    }
+
+    /// Audit H-42 : true si la nurse a saisi quelque chose qui mérite un confirm
+    /// avant fermeture sans save.
+    private var isDirty: Bool {
+        if case .edit = mode { return true }   // toute édition mérite un confirm
+        return !firstName.isEmpty || !lastName.isEmpty || !email.isEmpty
+            || !phone.isEmpty || dateOfBirth != nil || !addressLine1.isEmpty
+            || !city.isEmpty || !postalCode.isEmpty || !accessNotes.isEmpty
+            || !allergies.isEmpty || !medicalConditions.isEmpty
+            || !medicationsStr.isEmpty || !emergencyName.isEmpty
+            || !emergencyPhone.isEmpty
+    }
+
     var body: some View {
         NavigationView {
             Form {
                 Section("Identité") {
                     TextField("Prénom", text: $firstName)
+                        .accessibilityIdentifier("client.firstName")
                     TextField("Nom", text: $lastName)
+                        .accessibilityIdentifier("client.lastName")
                     Picker("Genre", selection: $gender) {
                         Text("—").tag("")
                         Text("Homme").tag("M")
                         Text("Femme").tag("F")
+                        Text("Autre").tag("O")
+                        Text("Non spécifié").tag("U")
                     }
-                    TextField("Date de naissance (YYYY-MM-DD)", text: $dateOfBirth)
-                        .keyboardType(.numbersAndPunctuation)
+                    .accessibilityIdentifier("client.gender")
+
+                    DatePicker(
+                        "Date de naissance",
+                        selection: Binding(
+                            get: { dateOfBirth ?? defaultDOB },
+                            set: { dateOfBirth = $0 }
+                        ),
+                        in: ...Date(),
+                        displayedComponents: .date
+                    )
+                    .accessibilityIdentifier("client.dateOfBirth")
+                    if dateOfBirth == nil {
+                        Button("Ajouter une date de naissance") {
+                            dateOfBirth = defaultDOB
+                        }
+                        .font(.caption)
+                        .accessibilityIdentifier("client.dateOfBirth.add")
+                    }
                 }
 
-                Section("Contact") {
+                Section {
                     TextField("Email", text: $email)
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
+                        .accessibilityIdentifier("client.email")
+                    if !emailIsValidOrEmpty {
+                        Text("Format email invalide.")
+                            .font(.caption2).foregroundStyle(.red)
+                    }
                     TextField("Téléphone", text: $phone)
                         .keyboardType(.phonePad)
+                        .accessibilityIdentifier("client.phone")
+                    if !phoneIsValidOrEmpty {
+                        Text("Téléphone US attendu : 10 chiffres.")
+                            .font(.caption2).foregroundStyle(.red)
+                    }
+                } header: {
+                    Text("Contact")
+                } footer: {
+                    Text("Email et téléphone sont facultatifs.")
+                        .font(.caption2)
                 }
 
                 Section("Adresse") {
                     TextField("Adresse (ligne 1)", text: $addressLine1)
+                        .accessibilityIdentifier("client.addressLine1")
                     TextField("Adresse (ligne 2, optionnel)", text: $addressLine2)
+                        .accessibilityIdentifier("client.addressLine2")
                     TextField("Ville", text: $city)
+                        .accessibilityIdentifier("client.city")
                     HStack {
-                        TextField("État (CA, TX, …)", text: $stateCode)
-                            .autocapitalization(.allCharacters)
+                        Picker("État", selection: $stateCode) {
+                            ForEach(USStates.codes, id: \.self) { Text($0).tag($0) }
+                        }
+                        .accessibilityIdentifier("client.stateCode")
                         TextField("Code postal", text: $postalCode)
                             .keyboardType(.numberPad)
+                            .accessibilityIdentifier("client.postalCode")
                     }
                     TextField("Code accès / étage / parking", text: $accessNotes, axis: .vertical)
                         .lineLimit(1...2)
+                        .accessibilityIdentifier("client.accessNotes")
                 }
 
                 Section("Médical") {
@@ -101,17 +182,23 @@ struct ClientFormView: View {
                         Text("Séparez les entrées par une virgule.").font(.caption2).foregroundStyle(.secondary)
                         TextField("Ex: Metformine 1000mg, Lisinopril 10mg", text: $medicationsStr, axis: .vertical)
                             .lineLimit(1...3)
+                            .accessibilityIdentifier("client.medications")
                     }
                 }
 
                 Section("Contact d'urgence") {
                     TextField("Nom", text: $emergencyName)
+                        .accessibilityIdentifier("client.emergencyName")
                     TextField("Téléphone", text: $emergencyPhone)
                         .keyboardType(.phonePad)
+                        .accessibilityIdentifier("client.emergencyPhone")
                 }
 
                 if let error = errorMessage {
-                    Section { Text(error).foregroundColor(.red).font(.caption) }
+                    Section {
+                        Text(error).foregroundColor(.red).font(.caption)
+                            .accessibilityIdentifier("client.error")
+                    }
                 }
                 if let info = infoMessage {
                     Section { Text(info).foregroundColor(.blue).font(.caption) }
@@ -121,15 +208,39 @@ struct ClientFormView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") { dismiss() }
+                    Button("Annuler") {
+                        // Audit H-42 : confirm si dirty
+                        if isDirty {
+                            showCancelConfirm = true
+                        } else {
+                            dismiss()
+                        }
+                    }
+                    .accessibilityIdentifier("client.cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Enregistrer") { Task { await save() } }
-                        .disabled(firstName.isEmpty || lastName.isEmpty || isSaving)
+                        .disabled(!canSave)
+                        .accessibilityIdentifier("client.save")
                 }
+            }
+            .confirmationDialog(
+                "Abandonner la saisie ?",
+                isPresented: $showCancelConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Abandonner", role: .destructive) { dismiss() }
+                Button("Continuer la saisie", role: .cancel) {}
+            } message: {
+                Text("Les informations saisies seront perdues.")
             }
             .onAppear(perform: preload)
         }
+    }
+
+    /// DOB par défaut quand l'utilisateur active le picker : 40 ans en arrière.
+    private var defaultDOB: Date {
+        Calendar.current.date(byAdding: .year, value: -40, to: Date()) ?? Date()
     }
 
     private func preload() {
@@ -138,12 +249,12 @@ struct ClientFormView: View {
             lastName = c.lastName
             email = c.email ?? ""
             phone = c.phone ?? ""
-            dateOfBirth = c.dateOfBirth ?? ""
+            dateOfBirth = c.dateOfBirth.flatMap(Self.parseISODate)
             gender = c.gender ?? ""
             addressLine1 = c.addressLine1 ?? ""
             addressLine2 = c.addressLine2 ?? ""
             city = c.city ?? ""
-            stateCode = c.stateCode ?? ""
+            stateCode = c.stateCode ?? "CA"
             postalCode = c.postalCode ?? ""
             accessNotes = c.accessNotes ?? ""
             allergies = c.allergies
@@ -152,6 +263,20 @@ struct ClientFormView: View {
             emergencyName = c.emergencyContactName ?? ""
             emergencyPhone = c.emergencyContactPhone ?? ""
         }
+    }
+
+    private static func parseISODate(_ s: String) -> Date? {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.timeZone = TimeZone(secondsFromGMT: 0)
+        return f.date(from: s)
+    }
+
+    private static func formatISODate(_ d: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.timeZone = TimeZone(secondsFromGMT: 0)
+        return f.string(from: d)
     }
 
     /// Split "Pénicilline, Iode" → ["Pénicilline", "Iode"]
@@ -167,6 +292,8 @@ struct ClientFormView: View {
         infoMessage = nil
         defer { isSaving = false }
 
+        let dobString = dateOfBirth.map(Self.formatISODate)
+
         do {
             switch mode {
             case .create:
@@ -178,7 +305,7 @@ struct ClientFormView: View {
                     lastName: lastName,
                     email: email.isEmpty ? nil : email,
                     phone: phone.isEmpty ? nil : phone,
-                    dateOfBirth: dateOfBirth.isEmpty ? nil : dateOfBirth,
+                    dateOfBirth: dobString,
                     gender: gender.isEmpty ? nil : gender,
                     addressLine1: addressLine1.isEmpty ? nil : addressLine1,
                     addressLine2: addressLine2.isEmpty ? nil : addressLine2,
@@ -208,7 +335,7 @@ struct ClientFormView: View {
                     lastName: changed(lastName, c.lastName),
                     email: changed(email, c.email),
                     phone: changed(phone, c.phone),
-                    dateOfBirth: changed(dateOfBirth, c.dateOfBirth),
+                    dateOfBirth: changed(dobString ?? "", c.dateOfBirth),
                     gender: changed(gender, c.gender),
                     addressLine1: changed(addressLine1, c.addressLine1),
                     addressLine2: changed(addressLine2, c.addressLine2),

@@ -43,6 +43,7 @@ struct ClientsView: View {
                             )) {
                                 ClientListItem(client: client)
                             }
+                            .accessibilityIdentifier("client.row.\(client.id)")
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 if client.isArchived {
                                     Button {
@@ -80,6 +81,7 @@ struct ClientsView: View {
                         Button { showCreateForm = true } label: {
                             Image(systemName: "plus")
                         }
+                        .accessibilityIdentifier("clients.addNew")
                     }
                 }
             }

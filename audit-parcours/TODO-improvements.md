@@ -124,6 +124,45 @@ d'origine, fichier(s) concerné(s), et la décision attendue côté fondateur.
 
 ---
 
+---
+
+## Parcours 3 — Création client
+
+### M-43 — Autocomplete d'adresse
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : `MKLocalSearchCompleter` côté line1, suggestions filtre par USA, remplit auto city/state/zip.
+- **Effort** : 2 h.
+
+### M-44 — Médications en chips/list au lieu de CSV
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : composant similaire à `ChipMultiSelect` mais sans presets (saisie libre + chips dynamiques).
+- **Effort** : 1 h 30.
+
+### M-45 — Mention HIPAA / data storage inline
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : footer discret dans le form, "Vos saisies sont stockées de manière HIPAA-compliant" + lien LegalDocsView.
+- **Effort** : 15 min.
+
+### M-46 — Étoffer presets allergies/conditions
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : ajouter "Diabète type 1", "Hépatite B/C", "VIH", "Cancer en rémission", "MICI", "Lupus", etc. à `ChipPresets`.
+- **Effort** : 15 min.
+
+### M-48 — Indication "facultatif" sur champs
+
+- **Sévérité** : MOYENNE
+- **Note** : déjà adressé partiellement (Section footer "Email et téléphone facultatifs"). À étendre.
+
+### B-47 / B-49 — Polish labels et format DOB affiché
+
+- **Effort** : 15 min.
+
+---
+
 ## Tests UI fragiles à stabiliser
 
 ### UI-T1 — `test_onboarding_nominal_flow_reaches_done` (skip)
