@@ -28,6 +28,7 @@ struct AuditLogView: View {
             .padding(.horizontal)
             .padding(.top, 8)
             .onChange(of: filter) { _, _ in Task { await load() } }
+            .accessibilityIdentifier("audit.filter")
 
             if isLoading && entries.isEmpty {
                 Spacer(); ProgressView(); Spacer()
@@ -46,7 +47,13 @@ struct AuditLogView: View {
                 Spacer()
             } else {
                 List(entries) { entry in
-                    AuditRow(entry: entry)
+                    // Audit H-114 : tap sur entrée → détail complet.
+                    NavigationLink {
+                        AuditLogDetailView(entry: entry)
+                    } label: {
+                        AuditRow(entry: entry)
+                    }
+                    .accessibilityIdentifier("audit.row.\(entry.id)")
                 }
                 .listStyle(.plain)
                 .refreshable { await load() }
@@ -115,8 +122,8 @@ private struct AuditRow: View {
         case .consents: return "Consentement"
         case .clients: return "Client"
         case .sessions: return "Session"
-        case .inventoryTransactions: return "Stock (mvt)"
-        case .inventoryLots: return "Stock (lot)"
+        case .inventoryTransactions: return "Mouvement de stock"
+        case .inventoryLots: return "Lot d'inventaire"
         case .standingOrders: return "Standing order"
         case .medicalDirectors: return "Medical Director"
         case .complianceAlerts: return "Alerte"
@@ -166,4 +173,98 @@ private struct AuditRow: View {
         f.dateFormat = "dd/MM HH:mm"
         return f
     }()
+}
+
+/// Audit H-114 : vue détail accessible au tap sur une AuditRow.
+/// Affiche tous les champs de l'entrée HIPAA sans truncation.
+struct AuditLogDetailView: View {
+    let entry: AuditLogEntry
+
+    private static let fullDateFmt: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "fr_FR")
+        f.dateStyle = .full
+        f.timeStyle = .medium
+        return f
+    }()
+
+    var body: some View {
+        Form {
+            Section("Entité") {
+                row("Type", value: labelForEntity(entry.entityType))
+                row("ID", value: entry.entityId, monospaced: true)
+            }
+
+            Section("Action") {
+                row("Type d'action", value: labelForAction(entry.action))
+                row("Effectuée le", value: Self.fullDateFmt.string(from: entry.occurredAt))
+            }
+
+            if let changes = entry.changes {
+                Section {
+                    Text(changes.displayString)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .accessibilityIdentifier("audit.detail.changes")
+                } header: {
+                    Text("Détail des changements")
+                } footer: {
+                    Text("Format clé : valeur. Sélectionnable pour copie.")
+                        .font(.caption2)
+                }
+            }
+
+            Section("Contexte requête") {
+                if let ip = entry.ipAddress, !ip.isEmpty {
+                    row("Adresse IP", value: ip, monospaced: true)
+                }
+                if let ua = entry.userAgent, !ua.isEmpty {
+                    row("User Agent", value: ua, monospaced: true)
+                }
+                if let n = entry.nurseId {
+                    row("Nurse ID", value: n, monospaced: true)
+                }
+            }
+        }
+        .navigationTitle("Entrée d'audit")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder
+    private func row(_ label: String, value: String, monospaced: Bool = false) -> some View {
+        HStack(alignment: .top) {
+            Text(label).font(.subheadline).foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .font(monospaced ? .system(.subheadline, design: .monospaced) : .subheadline)
+                .multilineTextAlignment(.trailing)
+                .textSelection(.enabled)
+        }
+    }
+
+    private func labelForEntity(_ type: AuditEntityType) -> String {
+        switch type {
+        case .consents: return "Consentement"
+        case .clients: return "Client"
+        case .sessions: return "Session"
+        case .inventoryTransactions: return "Mouvement de stock"
+        case .inventoryLots: return "Lot d'inventaire"
+        case .standingOrders: return "Standing order"
+        case .medicalDirectors: return "Medical Director"
+        case .complianceAlerts: return "Alerte"
+        case .users: return "Profil"
+        case .unknown: return "—"
+        }
+    }
+
+    private func labelForAction(_ a: AuditAction) -> String {
+        switch a {
+        case .create: return "Création"
+        case .update: return "Modification"
+        case .delete: return "Suppression"
+        case .read: return "Lecture"
+        case .export: return "Export"
+        case .unknown: return "—"
+        }
+    }
 }

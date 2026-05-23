@@ -36,6 +36,7 @@
 		71891B4A70B7F264274D981C /* ComplianceDashboardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC8490829C0AA5DCD3F63E84 /* ComplianceDashboardUITests.swift */; };
 		7256B32D534745BE46268BC5 /* APIDTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D273D1208167485D69DE1C9 /* APIDTOs.swift */; };
 		73FA05B818A35AF4E78A182B /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016D363586EE716D83B0B563 /* AuthViewModel.swift */; };
+		7400548F5FCDFC04127C4F01 /* AuditLogsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03BFDD51EC17E0082B82107 /* AuditLogsUITests.swift */; };
 		7682B30ADA57EF57B75DF8BE /* InventoryLotUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C79A43452DEB9E8540649179 /* InventoryLotUITests.swift */; };
 		78B686C32BC2407F8FCEF4D0 /* ClientCreationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4183E53C2F7AA6B0C625834 /* ClientCreationUITests.swift */; };
 		78E6CEBF17D65809D12F2DBE /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B54EFFAF411540FE9B98D8C /* User.swift */; };
@@ -159,6 +160,7 @@
 		AA6874ED1F8085A6B93D787F /* MutationQueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MutationQueueView.swift; sourceTree = "<group>"; };
 		AD524E556E4CB64EDA8F5965 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		AD83D4FBEAB5C63DF7D0493B /* InvoiceCodableTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceCodableTests.swift; sourceTree = "<group>"; };
+		B03BFDD51EC17E0082B82107 /* AuditLogsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditLogsUITests.swift; sourceTree = "<group>"; };
 		B69C58EBCD2ADA4C8F5B7F84 /* SecuritySettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecuritySettingsTests.swift; sourceTree = "<group>"; };
 		B8626ACF93B2719A1518FE61 /* LegalDocsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalDocsView.swift; sourceTree = "<group>"; };
 		C3E128DBA206FE219D527C71 /* ConsentSignatureUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsentSignatureUITests.swift; sourceTree = "<group>"; };
@@ -315,6 +317,7 @@
 		99F64E7C6BA0D18DCD518252 /* UITests */ = {
 			isa = PBXGroup;
 			children = (
+				B03BFDD51EC17E0082B82107 /* AuditLogsUITests.swift */,
 				E4183E53C2F7AA6B0C625834 /* ClientCreationUITests.swift */,
 				EC8490829C0AA5DCD3F63E84 /* ComplianceDashboardUITests.swift */,
 				C3E128DBA206FE219D527C71 /* ConsentSignatureUITests.swift */,
@@ -548,6 +551,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7400548F5FCDFC04127C4F01 /* AuditLogsUITests.swift in Sources */,
 				78B686C32BC2407F8FCEF4D0 /* ClientCreationUITests.swift in Sources */,
 				71891B4A70B7F264274D981C /* ComplianceDashboardUITests.swift in Sources */,
 				89FA3CF2DAD78D4FD245EA6A /* ConsentSignatureUITests.swift in Sources */,

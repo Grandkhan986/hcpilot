@@ -392,6 +392,41 @@ d'origine, fichier(s) concerné(s), et la décision attendue côté fondateur.
 
 ---
 
+---
+
+## Parcours 10 — Audit logs
+
+### H-116 — Export CSV / PDF du journal d'audit
+
+- **Sévérité** : HAUTE
+- **Problème** : auditeur externe HIPAA / RAC peut demander l'export complet. Pas d'UI ni d'endpoint.
+- **Solution proposée** : endpoint `GET /audit_logs/export.csv` (backend) + bouton "Exporter" dans la nav bar de AuditLogView. Stripe est un blocker pour le PDF avec signature.
+- **Effort** : 1 h.
+
+### M-118 — Filtre par action (create / update / delete)
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : 2ᵉ Picker segmented sous le filter entity, options "Toutes / Création / Modification / Suppression".
+- **Effort** : 20 min.
+
+### M-119 — Recherche par entityId
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : SearchBar au-dessus du Picker, filtre `entries.filter { $0.entityId.contains(searchTerm) }`.
+- **Effort** : 15 min.
+
+### M-120 — Pagination
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : trigger `loadMore` au scroll-end. Bouton "Charger plus" si limite atteinte.
+- **Effort** : 45 min.
+
+### B-122 — Timeline visuelle
+
+- **Sévérité** : BASSE — alternative visuelle à la liste plate.
+
+---
+
 ## Tests UI fragiles à stabiliser
 
 ### UI-T1 — `test_onboarding_nominal_flow_reaches_done` (skip)
