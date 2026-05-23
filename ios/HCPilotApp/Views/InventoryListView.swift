@@ -56,6 +56,7 @@ struct InventoryListView: View {
                     } label: {
                         Label("Scanner", systemImage: "barcode.viewfinder")
                     }
+                    .accessibilityIdentifier("inventory.scan")
                 }
             }
             .sheet(isPresented: $showAddSheet) {

@@ -261,6 +261,41 @@ d'origine, fichier(s) concerné(s), et la décision attendue côté fondateur.
 
 ---
 
+---
+
+## Parcours 6 — Ajout lot inventaire
+
+### M-79 — Warning péremption proche / passée
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : sous le DatePicker, afficher un Label rouge si la date est < J+30 (warning orange) ou < J0 (rouge "Lot déjà périmé").
+- **Effort** : 15 min.
+
+### M-80 — Scan multiple consécutif
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : après "Ajouter", proposer "Scanner un autre lot" en plus de "Terminer" pour rester dans le flow.
+- **Effort** : 30 min.
+
+### M-81 — CTA Scanner plus proéminent
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : remplacer le toolbar icon par un FAB ou un large bouton dans la zone d'en-tête de InventoryListView.
+- **Effort** : 20 min.
+
+### M-82 — Filtre par catégorie
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : segmented picker NAD / Vitamines / Sérum / Autres sous la SearchBar.
+- **Effort** : 30 min.
+
+### B-83 / B-84 — Devise et UI scanner
+
+- B-83 différée passage anglais (cf. brief).
+- B-84 cosmétique.
+
+---
+
 ## Tests UI fragiles à stabiliser
 
 ### UI-T1 — `test_onboarding_nominal_flow_reaches_done` (skip)

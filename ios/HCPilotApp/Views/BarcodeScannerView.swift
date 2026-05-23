@@ -89,18 +89,31 @@ struct BarcodeScannerView: View {
                     .foregroundStyle(.white)
                     .clipShape(Capsule())
             }
+            .accessibilityIdentifier("scanner.openManual")
             Button("Annuler") { onCancel() }
                 .padding(.top, 4)
+                .accessibilityIdentifier("scanner.cancel")
         }
     }
 
     private var manualEntrySheet: some View {
         NavigationView {
             Form {
-                Section("Code-barres") {
+                Section {
+                    // Audit H-78 : keyboardType .asciiCapable accepte les
+                    // chiffres ET les lettres (Code 128 / 39 peuvent inclure
+                    // des caractères alphanum).
                     TextField("Saisissez le code-barres", text: $manualInput)
-                        .keyboardType(.numberPad)
+                        .keyboardType(.asciiCapable)
+                        .autocapitalization(.allCharacters)
+                        .disableAutocorrection(true)
                         .font(.system(.body, design: .monospaced))
+                        .accessibilityIdentifier("scanner.manual.input")
+                } header: {
+                    Text("Code-barres")
+                } footer: {
+                    Text("EAN-13 (13 chiffres), Code 128 (alphanumérique), etc.")
+                        .font(.caption2)
                 }
             }
             .navigationTitle("Saisie manuelle")
@@ -115,6 +128,7 @@ struct BarcodeScannerView: View {
                         onDetected(manualInput)
                     }
                     .disabled(manualInput.isEmpty)
+                    .accessibilityIdentifier("scanner.manual.validate")
                 }
             }
         }

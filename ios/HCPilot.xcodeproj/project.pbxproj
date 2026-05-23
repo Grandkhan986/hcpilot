@@ -34,6 +34,7 @@
 		70EB0608E7666EC460903327 /* LowStockSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F2631E977A59E57CF5C23D6 /* LowStockSheet.swift */; };
 		7256B32D534745BE46268BC5 /* APIDTOs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D273D1208167485D69DE1C9 /* APIDTOs.swift */; };
 		73FA05B818A35AF4E78A182B /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016D363586EE716D83B0B563 /* AuthViewModel.swift */; };
+		7682B30ADA57EF57B75DF8BE /* InventoryLotUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C79A43452DEB9E8540649179 /* InventoryLotUITests.swift */; };
 		78B686C32BC2407F8FCEF4D0 /* ClientCreationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4183E53C2F7AA6B0C625834 /* ClientCreationUITests.swift */; };
 		78E6CEBF17D65809D12F2DBE /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B54EFFAF411540FE9B98D8C /* User.swift */; };
 		7FDFEA4958061B99CE1B383E /* SupplierSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E88B4C86E86DA627EBC2C56 /* SupplierSettingsView.swift */; };
@@ -156,6 +157,7 @@
 		B8626ACF93B2719A1518FE61 /* LegalDocsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalDocsView.swift; sourceTree = "<group>"; };
 		C3E128DBA206FE219D527C71 /* ConsentSignatureUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsentSignatureUITests.swift; sourceTree = "<group>"; };
 		C6080AA0D95193A72BC50AE7 /* ConsentPDFBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsentPDFBuilder.swift; sourceTree = "<group>"; };
+		C79A43452DEB9E8540649179 /* InventoryLotUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryLotUITests.swift; sourceTree = "<group>"; };
 		D2B3D9B8E955AFF9F53F5938 /* ClientsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientsView.swift; sourceTree = "<group>"; };
 		DB39FC80B037368C4A32EA5D /* AddLotFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddLotFlow.swift; sourceTree = "<group>"; };
 		DBB65B7FBE988B37F269EE6F /* LotUsageSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LotUsageSheet.swift; sourceTree = "<group>"; };
@@ -307,6 +309,7 @@
 				E4183E53C2F7AA6B0C625834 /* ClientCreationUITests.swift */,
 				C3E128DBA206FE219D527C71 /* ConsentSignatureUITests.swift */,
 				5FB35816B24CC29B29236138 /* HomeDashboardUITests.swift */,
+				C79A43452DEB9E8540649179 /* InventoryLotUITests.swift */,
 				0CF06387AA1125A0B963104E /* OnboardingUITests.swift */,
 				0FB6BA7662C67C4AC3CD7DB9 /* SessionLifecycleUITests.swift */,
 			);
@@ -535,6 +538,7 @@
 				78B686C32BC2407F8FCEF4D0 /* ClientCreationUITests.swift in Sources */,
 				89FA3CF2DAD78D4FD245EA6A /* ConsentSignatureUITests.swift in Sources */,
 				CFF6CABD9E72812B77DDAF20 /* HomeDashboardUITests.swift in Sources */,
+				7682B30ADA57EF57B75DF8BE /* InventoryLotUITests.swift in Sources */,
 				84EB4B2027557D7949F6EA07 /* OnboardingUITests.swift in Sources */,
 				FEBC353AF0524B49CEB08107 /* SessionLifecycleUITests.swift in Sources */,
 			);

@@ -60,8 +60,26 @@ struct LotEntryView: View {
     @State private var notes: String = ""
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var showCancelConfirm = false
 
-    let categories = ["nad", "vitamins", "saline", "medication", "supplies", "other"]
+    /// Audit H-77 : labels lisibles pour les catégories de produits IV.
+    /// Le serveur stocke les raw values ("nad", "vitamins") ; la UI les
+    /// remappe vers le vocabulaire métier (NAD+, etc.).
+    static let categories: [(value: String, label: String)] = [
+        ("nad", "NAD+"),
+        ("vitamins", "Vitamines"),
+        ("saline", "Sérum physiologique"),
+        ("medication", "Médicament"),
+        ("supplies", "Fournitures"),
+        ("other", "Autre"),
+    ]
+
+    /// Audit H-75 : true si la nurse a déjà saisi quelque chose qui mérite
+    /// confirmation avant fermeture sans save.
+    private var isDirty: Bool {
+        !productName.isEmpty || !lotNumber.isEmpty || !unitCost.isEmpty
+            || !supplier.isEmpty || !notes.isEmpty
+    }
 
     var body: some View {
         NavigationView {
@@ -76,11 +94,13 @@ struct LotEntryView: View {
                 }
                 Section("Produit") {
                     TextField("Nom du produit", text: $productName)
+                        .accessibilityIdentifier("lot.productName")
                     Picker("Catégorie", selection: $category) {
-                        ForEach(categories, id: \.self) { c in
-                            Text(c.capitalized).tag(c)
+                        ForEach(Self.categories, id: \.value) { c in
+                            Text(c.label).tag(c.value)
                         }
                     }
+                    .accessibilityIdentifier("lot.category")
                     if let bc = barcode {
                         HStack {
                             Text("Code-barres")
@@ -90,24 +110,36 @@ struct LotEntryView: View {
                     }
                 }
 
-                Section("Lot") {
+                Section {
                     TextField("Numéro de lot", text: $lotNumber)
                         .autocapitalization(.allCharacters)
+                        .accessibilityIdentifier("lot.lotNumber")
                     DatePicker("Péremption", selection: $expirationDate, displayedComponents: .date)
+                        .accessibilityIdentifier("lot.expirationDate")
                     Stepper("Quantité initiale : \(quantityInitial)", value: $quantityInitial, in: 1...500)
+                        .accessibilityIdentifier("lot.quantity")
+                } header: {
+                    Text("Lot")
+                } footer: {
+                    Text("Le numéro de lot figure sur l'étiquette du flacon (ex: MYR-2025-A12).")
+                        .font(.caption2)
                 }
 
                 Section("Acquisition") {
                     TextField("Fournisseur", text: $supplier)
+                        .accessibilityIdentifier("lot.supplier")
                     TextField("Coût unitaire (€)", text: $unitCost)
                         .keyboardType(.decimalPad)
+                        .accessibilityIdentifier("lot.unitCost")
                     TextField("Notes", text: $notes, axis: .vertical)
                         .lineLimit(2...4)
+                        .accessibilityIdentifier("lot.notes")
                 }
 
                 if let err = errorMessage {
                     Section {
                         Text(err).font(.caption).foregroundStyle(.red)
+                            .accessibilityIdentifier("lot.error")
                     }
                 }
             }
@@ -115,12 +147,31 @@ struct LotEntryView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") { onCancel() }
+                    Button("Annuler") {
+                        // Audit H-75 : confirm si saisie en cours
+                        if isDirty {
+                            showCancelConfirm = true
+                        } else {
+                            onCancel()
+                        }
+                    }
+                    .accessibilityIdentifier("lot.cancelEntry")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Ajouter") { Task { await save() } }
                         .disabled(productName.isEmpty || lotNumber.isEmpty || isSaving)
+                        .accessibilityIdentifier("lot.add")
                 }
+            }
+            .confirmationDialog(
+                "Abandonner la saisie du lot ?",
+                isPresented: $showCancelConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Abandonner", role: .destructive) { onCancel() }
+                Button("Continuer la saisie", role: .cancel) {}
+            } message: {
+                Text("Les informations saisies seront perdues.")
             }
             .onAppear(perform: applyPrefill)
         }
