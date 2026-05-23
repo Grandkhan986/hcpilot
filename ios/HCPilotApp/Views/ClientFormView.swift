@@ -357,6 +357,14 @@ struct ClientFormView: View {
                 onSaved()
                 dismiss()
             }
+        } catch APIService.QueuedError.enqueued {
+            // Audit C-94 : la création offline est queueée — on traite comme un
+            // succès optimiste pour ne pas frustrer l'utilisatrice. Le sync se
+            // fera automatiquement au retour réseau.
+            infoMessage = "Hors-ligne. Le client sera créé à la reconnexion."
+            try? await Task.sleep(nanoseconds: 900_000_000)
+            onSaved()
+            dismiss()
         } catch {
             errorMessage = "Erreur : \(error.localizedDescription)"
         }

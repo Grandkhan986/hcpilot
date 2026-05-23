@@ -39,6 +39,18 @@ final class MutationQueue: ObservableObject {
     // MARK: - Public API
 
     func enqueue(endpoint: String, method: String, body: Data?) {
+        // Audit H-96 : dédoublonnage. Si une mutation (endpoint, method) identique
+        // a été enqueued dans les 5 dernières secondes, on ne re-enqueue pas —
+        // évite les double POST quand l'utilisateur re-tape « Commencer » sur
+        // une session déjà queuée. Note : on ne compare PAS les bodies (un body
+        // peut différer pour un même endpoint+method, ex: updateClient).
+        let recentDuplicate = pending.contains { m in
+            m.endpoint == endpoint
+                && m.method == method
+                && Date().timeIntervalSince(m.queuedAt) < 5.0
+        }
+        if recentDuplicate { return }
+
         let mutation = PendingMutation(
             id: UUID().uuidString,
             endpoint: endpoint,

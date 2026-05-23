@@ -492,8 +492,12 @@ class APIService {
         return try await cachedGet("/clients?archived=\(archived)")
     }
 
+    /// Audit C-94 : création client offline-safe.
+    /// `queuedPost` enqueue automatiquement la mutation si le réseau est down,
+    /// puis throw `QueuedError.enqueued` — l'UI peut le traiter comme un succès
+    /// optimiste (le client local est créé ; la sync se fait au retour réseau).
     func createClient(client: Client) async throws -> Client {
-        return try await post("/clients", body: client)
+        return try await queuedPost("/clients", body: client)
     }
 
     func updateClient(id: String, patch: ClientPatch) async throws -> UpdatedClientResponse {

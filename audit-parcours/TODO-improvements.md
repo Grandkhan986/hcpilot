@@ -331,6 +331,38 @@ d'origine, fichier(s) concerné(s), et la décision attendue côté fondateur.
 
 ---
 
+---
+
+## Parcours 8 — Offline behavior
+
+### H-95 — Detection offline passive (NWPathMonitor)
+
+- **Sévérité** : HAUTE
+- **Problème** : actuellement, l'app détecte l'offline uniquement quand un appel échoue. Si l'utilisatrice ne fait rien pendant 30 min en zone blanche, l'app croit toujours être en ligne.
+- **Solution proposée** : `NWPathMonitor` qui met à jour `ConnectivityState.isOffline` en temps réel + déclenche un drain automatique au retour de connexion.
+- **Effort** : 1 h.
+
+### H-97 — Errors réseau user-friendly
+
+- **Sévérité** : HAUTE
+- **Problème** : "NSURLErrorDomain Code=-1009" affiché à l'utilisateur.
+- **Solution proposée** : centraliser dans `APIService.intercept` la conversion `URLError → APIError` avec messages français explicites.
+- **Effort** : 30 min.
+
+### M-99 — Glossaire / aide MutationQueueView
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : déjà présent via la section "Comportement" qui explique. Peut être enrichi avec un FAQ.
+- **Effort** : 30 min.
+
+### M-102 — Persistance banner offline
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : conserver le banner 2-3 secondes après le retour online pour indiquer "Reconnecté · X actions synchronisées".
+- **Effort** : 20 min.
+
+---
+
 ## Tests UI fragiles à stabiliser
 
 ### UI-T1 — `test_onboarding_nominal_flow_reaches_done` (skip)

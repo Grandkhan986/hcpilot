@@ -2,9 +2,16 @@ import SwiftUI
 
 /// Vue d'inspection de la file de mutations offline (brief §Gestion offline).
 /// Liste les actions cliniques en attente de sync (start/complete/usage/delete).
+///
+/// Audit parcours 8 :
+/// - M-100 loading state sur "Forcer la synchronisation"
+/// - M-101 confirmationDialog sur "Vider la file"
+/// - H-98 accessibilityIdentifier sur les contrôles
 struct MutationQueueView: View {
     @StateObject private var queue = MutationQueue.shared
     @StateObject private var connectivity = ConnectivityState.shared
+    @State private var isDraining = false
+    @State private var showClearConfirm = false
 
     var body: some View {
         Form {
@@ -19,6 +26,7 @@ struct MutationQueueView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
+                .accessibilityIdentifier("mutationQueue.connectivity")
             }
 
             Section("\(queue.count) mutation\(queue.count > 1 ? "s" : "") en attente") {
@@ -28,6 +36,7 @@ struct MutationQueueView: View {
                         Text("File vide — toutes les actions sont synchronisées.")
                             .font(.caption)
                     }
+                    .accessibilityIdentifier("mutationQueue.empty")
                 } else {
                     ForEach(queue.pending) { m in
                         VStack(alignment: .leading, spacing: 4) {
@@ -50,12 +59,13 @@ struct MutationQueueView: View {
                             }
                             .foregroundStyle(.secondary)
                         }
+                        .accessibilityIdentifier("mutationQueue.row.\(m.id)")
                     }
                 }
             }
 
             Section("Comportement") {
-                Text("Les actions cliniques (start/complete session, usage stock, annulation) effectuées sans réseau sont mises en file. Au retour de connexion, la file est drainée automatiquement avec retry exponentiel. Les actions devenues obsolètes (4xx serveur) sont abandonnées (last-write-wins).")
+                Text("Les actions cliniques (start/complete session, usage stock, création client, annulation) effectuées sans réseau sont mises en file. Au retour de connexion, la file est drainée automatiquement avec retry exponentiel. Les actions devenues obsolètes (4xx serveur) sont abandonnées (last-write-wins).")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -63,20 +73,50 @@ struct MutationQueueView: View {
             if !queue.pending.isEmpty {
                 Section {
                     Button {
-                        Task { await MutationQueue.shared.drain(via: APIService.shared) }
+                        Task { await drainNow() }
                     } label: {
-                        Label("Forcer la synchronisation", systemImage: "arrow.triangle.2.circlepath")
+                        HStack {
+                            if isDraining {
+                                ProgressView()
+                            } else {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                            }
+                            Text(isDraining ? "Synchronisation en cours…" : "Forcer la synchronisation")
+                        }
                     }
+                    .disabled(isDraining)
+                    .accessibilityIdentifier("mutationQueue.drain")
+
                     Button(role: .destructive) {
-                        MutationQueue.shared.clear()
+                        showClearConfirm = true
                     } label: {
                         Label("Vider la file (sans sync)", systemImage: "trash")
                     }
+                    .disabled(isDraining)
+                    .accessibilityIdentifier("mutationQueue.clear")
                 }
             }
         }
         .navigationTitle("File de synchronisation")
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog(
+            "Vider la file sans synchroniser ?",
+            isPresented: $showClearConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Vider", role: .destructive) {
+                MutationQueue.shared.clear()
+            }
+            Button("Annuler", role: .cancel) {}
+        } message: {
+            Text("Les actions en attente seront perdues définitivement. Utilisez uniquement si vous êtes sûre qu'elles ne doivent pas être appliquées (ex: doublon).")
+        }
+    }
+
+    private func drainNow() async {
+        isDraining = true
+        defer { isDraining = false }
+        await MutationQueue.shared.drain(via: APIService.shared)
     }
 
     private func colorForMethod(_ s: String) -> Color {
