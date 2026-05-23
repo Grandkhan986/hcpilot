@@ -59,6 +59,7 @@ struct HCPilotTabBar: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("tab.\(tab.title.lowercased().folding(options: .diacriticInsensitive, locale: .current))")
             }
         }
         .padding(.top, 6)

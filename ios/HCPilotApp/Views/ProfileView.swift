@@ -48,6 +48,7 @@ struct ProfileView: View {
                         Button { showSetupWizard = true } label: {
                             ProfileMenuRow(icon: "checkmark.shield", title: "Configuration de la pratique")
                         }
+                        .accessibilityIdentifier("profile.openSetupWizard")
                         NavigationLink(destination: AuditLogView()) {
                             ProfileMenuRow(icon: "lock.doc", title: "Journal d'audit (HIPAA)")
                         }

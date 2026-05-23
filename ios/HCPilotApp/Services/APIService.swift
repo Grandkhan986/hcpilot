@@ -567,7 +567,7 @@ class APIService {
     }
 
     func getStandingOrders() async throws -> [StandingOrderInfo] {
-        return try await cachedGet("/compliance/standingOrders")
+        return try await cachedGet("/compliance/standing_orders")
     }
 
     func acknowledgeAlert(id: String) async throws {
@@ -585,7 +585,7 @@ class APIService {
     }
 
     func createStandingOrder(_ payload: CreateStandingOrderRequest) async throws -> StandingOrderInfo {
-        return try await post("/compliance/standingOrders", body: payload)
+        return try await post("/compliance/standing_orders", body: payload)
     }
 
     // MARK: - Audit Logs

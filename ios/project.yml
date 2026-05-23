@@ -31,10 +31,25 @@ targets:
     platform: iOS
     sources:
       - path: HCPilotAppTests
+        excludes:
+          - "UITests/**"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hcpilot.app.tests
         GENERATE_INFOPLIST_FILE: "YES"
+    dependencies:
+      - target: HCPilotApp
+
+  HCPilotAppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: HCPilotAppTests/UITests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hcpilot.app.uitests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_TARGET_NAME: HCPilotApp
     dependencies:
       - target: HCPilotApp
 

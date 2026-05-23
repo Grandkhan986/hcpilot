@@ -34,11 +34,13 @@ struct LoginView: View {
                     .padding()
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
+                    .accessibilityIdentifier("login.email")
 
                 SecureField("Mot de passe", text: $password)
                     .padding()
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
+                    .accessibilityIdentifier("login.password")
             }
             .padding(.horizontal)
 
@@ -51,7 +53,6 @@ struct LoginView: View {
             }
 
             Button {
-                print("[HCPilot] Button tapped!")
                 Task {
                     await viewModel.login(email: email, password: password)
                 }
@@ -73,6 +74,7 @@ struct LoginView: View {
             .cornerRadius(12)
             .padding(.horizontal)
             .disabled(viewModel.isLoading || email.isEmpty || password.isEmpty)
+            .accessibilityIdentifier("login.submit")
 
             Spacer()
 
