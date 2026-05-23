@@ -12,6 +12,12 @@ struct NotificationsView: View {
     @State private var isLoading = true
     @State private var feedback: String?
 
+    // Audit H-103 : toggles granulaire par catégorie. NotificationService
+    // lit ces flags via UserDefaults avant de programmer une notif.
+    @AppStorage("notif.compliance.enabled") private var complianceEnabled = true
+    @AppStorage("notif.session.enabled") private var sessionEnabled = true
+    @AppStorage("notif.inventory.enabled") private var inventoryEnabled = true
+
     var body: some View {
         Form {
             Section("Permission") {
@@ -30,6 +36,15 @@ struct NotificationsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            }
+
+            Section("Catégories") {
+                Toggle("Conformité (licence / MD / standing orders)", isOn: $complianceEnabled)
+                    .accessibilityIdentifier("notif.toggle.compliance")
+                Toggle("Rappels de sessions (J-1, H-2)", isOn: $sessionEnabled)
+                    .accessibilityIdentifier("notif.toggle.session")
+                Toggle("Péremptions inventaire (J-30, J-15)", isOn: $inventoryEnabled)
+                    .accessibilityIdentifier("notif.toggle.inventory")
             }
 
             Section("Notifications programmées") {
@@ -54,7 +69,10 @@ struct NotificationsView: View {
                 }
             }
 
-            Section("Brief Sprint 6") {
+            #if DEBUG
+            // Audit M-107 : jargon interne caché en build prod. Reste visible
+            // en debug pour QA.
+            Section("Brief Sprint 6 (DEBUG)") {
                 Text("Les seuils suivent le brief :")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -64,10 +82,12 @@ struct NotificationsView: View {
                     Text("• Standing order : J-30, J-7")
                     Text("• Audit MD : J-7 et jour J")
                     Text("• Session : J-1 (8h) et H-2")
+                    Text("• Inventaire : J-30, J-15")
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
+            #endif
 
             Section("Test") {
                 Button {

@@ -116,14 +116,30 @@ struct ProfileView: View {
     }
 }
 
+/// Audit H-112 : les entrées de menu sans destination opérationnelle sont
+/// désactivées visuellement plutôt que présentées comme cliquables. Évite la
+/// frustration "tap sans effet" pour les utilisateurs néophytes.
 struct ProfileMenuItem: View {
     let icon: String
     let title: String
 
     var body: some View {
-        Button(action: {}) {
-            ProfileMenuRow(icon: icon, title: title)
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(.secondary)
+                .frame(width: 24)
+            Text(title)
+                .foregroundColor(.secondary)
+            Spacer()
+            Text("Bientôt")
+                .font(.caption2)
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .background(Color(.systemGray5))
+                .clipShape(Capsule())
+                .foregroundColor(.secondary)
         }
+        .padding(.horizontal)
+        .padding(.vertical, 12)
     }
 }
 

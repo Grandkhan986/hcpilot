@@ -209,7 +209,25 @@ final class NotificationService {
         await scheduleAt(id: id, title: title, body: body, fireDate: fireAt9)
     }
 
+    /// Audit H-103 : préférences granulaires par catégorie. Si la nurse a
+    /// désactivé la catégorie, on skip silencieusement le scheduling.
+    /// Les flags sont stockés dans UserDefaults (cf. NotificationsView).
+    private func categoryEnabled(forIdentifier id: String) -> Bool {
+        let d = UserDefaults.standard
+        if id.hasPrefix("compliance:") {
+            return d.object(forKey: "notif.compliance.enabled") as? Bool ?? true
+        }
+        if id.hasPrefix("session:") {
+            return d.object(forKey: "notif.session.enabled") as? Bool ?? true
+        }
+        if id.hasPrefix("inventory:") {
+            return d.object(forKey: "notif.inventory.enabled") as? Bool ?? true
+        }
+        return true  // smoke tests, etc.
+    }
+
     private func scheduleAt(id: String, title: String, body: String, fireDate: Date) async {
+        guard categoryEnabled(forIdentifier: id) else { return }
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body

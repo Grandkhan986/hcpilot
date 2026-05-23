@@ -8,22 +8,26 @@ struct SecuritySettingsView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @State private var selectedTimeout: Int = SecuritySettings.inactivityTimeoutMinutes
     @State private var lastActivity: Date? = SecureStorage.shared.getDate(forKey: .lastActivity)
+    @State private var showLockConfirm = false
 
-    private let options = [5, 15, 30, 60]
+    // Audit M-108 : étendre les options jusqu'à 2h pour les nurses en tournée
+    // longue (8h+ sur la route).
+    private let options = [5, 15, 30, 60, 120]
 
     var body: some View {
         Form {
             Section("Verrouillage automatique") {
                 Picker("Délai d'inactivité", selection: $selectedTimeout) {
                     ForEach(options, id: \.self) { m in
-                        Text("\(m) min").tag(m)
+                        Text(label(forMinutes: m)).tag(m)
                     }
                 }
                 .pickerStyle(.segmented)
                 .onChange(of: selectedTimeout) { _, newValue in
                     SecuritySettings.inactivityTimeoutMinutes = newValue
                 }
-                Text("Au-delà de \(selectedTimeout) minutes sans activité, vous serez automatiquement déconnecté(e). Conforme au brief HIPAA.")
+                .accessibilityIdentifier("security.timeout.picker")
+                Text("Au-delà de \(label(forMinutes: selectedTimeout)) sans activité, vous serez automatiquement déconnecté(e). Conforme au brief HIPAA.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -61,18 +65,38 @@ struct SecuritySettingsView: View {
 
             Section {
                 Button(role: .destructive) {
-                    authViewModel.logout()
+                    // Audit H-105 : confirm avant logout pour éviter le tap accidentel.
+                    showLockConfirm = true
                 } label: {
                     Label("Verrouiller maintenant", systemImage: "lock.fill")
                 }
+                .accessibilityIdentifier("security.lockNow")
             }
         }
         .navigationTitle("Sécurité")
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog(
+            "Verrouiller la session ?",
+            isPresented: $showLockConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Verrouiller", role: .destructive) { authViewModel.logout() }
+            Button("Annuler", role: .cancel) {}
+        } message: {
+            Text("Vous devrez vous reconnecter avec votre email et mot de passe.")
+        }
         .onAppear {
             lastActivity = SecureStorage.shared.getDate(forKey: .lastActivity)
             selectedTimeout = SecuritySettings.inactivityTimeoutMinutes
         }
+    }
+
+    private func label(forMinutes m: Int) -> String {
+        if m >= 60 {
+            let h = m / 60
+            return "\(h)h"
+        }
+        return "\(m) min"
     }
 
     private func remainingText(last: Date) -> String {

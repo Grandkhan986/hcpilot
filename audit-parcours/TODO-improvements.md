@@ -363,6 +363,35 @@ d'origine, fichier(s) concerné(s), et la décision attendue côté fondateur.
 
 ---
 
+---
+
+## Parcours 9 — Profil & sécurité
+
+### H-104 — Édition MD existant (audit frequency, dates contrat)
+
+- **Sévérité** : HAUTE
+- **Problème** : SetupWizardView re-crée un MD. Pas de vue pour modifier un MD actif (juste re-create).
+- **Solution proposée** : `MedicalDirectorEditView` + endpoint `PUT /compliance/medical_directors/{id}` backend.
+- **Effort** : 2 h (UI + backend).
+
+### M-109 — "Synchroniser maintenant" global
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : bouton dans ProfileView qui appelle `MutationQueue.drain` + invalide les caches GET. Indicateur de progression.
+- **Effort** : 30 min.
+
+### M-113 — Feedback save SecuritySettings
+
+- **Sévérité** : MOYENNE
+- **Solution proposée** : Toast "Modifications enregistrées" qui s'affiche 2s après changement du picker.
+- **Effort** : 20 min.
+
+### B-110 — Photo de profil
+
+- **Sévérité** : BASSE (future feature).
+
+---
+
 ## Tests UI fragiles à stabiliser
 
 ### UI-T1 — `test_onboarding_nominal_flow_reaches_done` (skip)
