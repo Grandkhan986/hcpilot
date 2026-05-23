@@ -64,6 +64,10 @@ class AuthViewModel: ObservableObject {
         isAuthenticated = false
         user = nil
         sessionLocked = false
+        // C-01 — reset le cache onboarding pour ne pas mélanger entre comptes.
+        // ContentView observe isAuthenticated et appelle reset() de toute façon,
+        // mais on le force ici aussi pour les flux directs (ProfileView.logout).
+        OnboardingState.shared.reset()
     }
 
     /// Vérifie si la session est expirée par inactivité. À appeler au lancement

@@ -46,7 +46,12 @@ struct ComplianceDashboardView: View {
         .task { await vm.load() }
         .refreshable { await vm.load() }
         .sheet(isPresented: $showSetupWizard) {
-            SetupWizardView(onCompleted: { Task { await vm.load() } })
+            SetupWizardView(mode: .editFromProfile, onCompleted: {
+                Task {
+                    await vm.load()
+                    await OnboardingState.shared.evaluate()
+                }
+            })
         }
     }
 }

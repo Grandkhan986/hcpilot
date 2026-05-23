@@ -10,11 +10,25 @@ import SwiftUI
 /// 3. Premier standing order (POST /compliance/standingOrders depuis template)
 /// 4. Écran de bienvenue final.
 struct SetupWizardView: View {
+    /// Contexte d'apparition du wizard. C-01 : en mode `.gate` le wizard est
+    /// non-dismissible (premier lancement, force la complétion). En mode
+    /// `.editFromProfile`, l'utilisatrice peut fermer / reprendre.
+    enum Mode {
+        case gate
+        case editFromProfile
+    }
+
+    let mode: Mode
     var onCompleted: () -> Void
 
     @StateObject private var vm = SetupWizardViewModel()
     @Environment(\.dismiss) private var dismiss
     @State private var showDismissConfirm = false
+
+    init(mode: Mode = .editFromProfile, onCompleted: @escaping () -> Void) {
+        self.mode = mode
+        self.onCompleted = onCompleted
+    }
 
     var body: some View {
         NavigationStack {
@@ -30,8 +44,13 @@ struct SetupWizardView: View {
                     MedicalDirectorStep(vm: vm).tag(2)
                     StandingOrderStep(vm: vm).tag(3)
                     DoneStep(vm: vm, onClose: {
+                        // À la complétion, on clear la step persistée et on
+                        // signale au parent (qui peut .markComplete() le gate).
+                        vm.clearPersistedStep()
                         onCompleted()
-                        dismiss()
+                        if mode == .editFromProfile {
+                            dismiss()
+                        }
                     }).tag(4)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
@@ -40,16 +59,18 @@ struct SetupWizardView: View {
             .navigationTitle("Configuration de la pratique")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fermer") {
-                        // Audit C-03 : confirm si données partielles non envoyées.
-                        if vm.hasUnsavedWork {
-                            showDismissConfirm = true
-                        } else {
-                            dismiss()
+                if mode == .editFromProfile {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Fermer") {
+                            // Audit C-03 : confirm si données partielles non envoyées.
+                            if vm.hasUnsavedWork {
+                                showDismissConfirm = true
+                            } else {
+                                dismiss()
+                            }
                         }
+                        .accessibilityIdentifier("onboarding.close")
                     }
-                    .accessibilityIdentifier("onboarding.close")
                 }
             }
             .confirmationDialog(
@@ -62,7 +83,9 @@ struct SetupWizardView: View {
             } message: {
                 Text("Vos saisies non envoyées seront perdues. Vous pourrez reprendre depuis Profil → Configuration.")
             }
-            .interactiveDismissDisabled(vm.hasUnsavedWork)
+            // C-01 mode .gate : non-dismissible. .editFromProfile :
+            // protège contre swipe-down si saisie en cours.
+            .interactiveDismissDisabled(mode == .gate || vm.hasUnsavedWork)
         }
     }
 }
@@ -500,7 +523,20 @@ final class SetupWizardViewModel: ObservableObject {
     /// Total d'étapes (welcome + 3 actions + done).
     static let totalSteps = 5
 
-    @Published var step: Int = 0
+    /// C-01 — clé UserDefaults pour persister la step en cours et permettre la
+    /// reprise après force-close au milieu de l'onboarding.
+    private let persistedStepKey = "setup.lastStep"
+
+    @Published var step: Int = 0 {
+        didSet {
+            // Persiste à chaque changement de step pour la reprise.
+            // On évite de re-persister la step 4 (Done) qui doit s'effacer
+            // proprement via clearPersistedStep() à la complétion.
+            if step < SetupWizardViewModel.totalSteps - 1 {
+                UserDefaults.standard.set(step, forKey: persistedStepKey)
+            }
+        }
+    }
     @Published var isSubmitting = false
     @Published var errorMessage: String?
 
@@ -535,6 +571,25 @@ final class SetupWizardViewModel: ObservableObject {
     @Published var standingOrderExpiresAt: Date = Calendar.current.date(byAdding: .year, value: 1, to: Date()) ?? Date()
 
     private let api = APIService.shared
+
+    init() {
+        // C-01 — restaure la step où l'utilisatrice s'était arrêtée si
+        // une session précédente a été interrompue. Ne reprend QUE les steps
+        // d'action (1, 2, 3) — ramener à 0 (Welcome) si rien de saisi.
+        let saved = UserDefaults.standard.integer(forKey: persistedStepKey)
+        if saved > 0 && saved < SetupWizardViewModel.totalSteps - 1 {
+            // On utilise une assignation directe pour ne pas déclencher le
+            // didSet qui re-persiste (ce serait identique de toute façon).
+            self.step = saved
+        }
+    }
+
+    /// Appelé après que le wizard a été complété avec succès. Reset le step
+    /// persisté pour ne pas re-ouvrir le wizard à la step 4 (Done) au prochain
+    /// lancement.
+    func clearPersistedStep() {
+        UserDefaults.standard.removeObject(forKey: persistedStepKey)
+    }
 
     /// Audit H-05/H-06 : validations format pré-submit basées sur Validators.
     var licenseStepValid: Bool {

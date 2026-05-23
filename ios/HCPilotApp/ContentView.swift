@@ -4,13 +4,25 @@ struct ContentView: View {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var connectivity = ConnectivityState.shared
     @StateObject private var mutationQueue = MutationQueue.shared
+    @StateObject private var onboarding = OnboardingState.shared
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack(alignment: .top) {
             Group {
                 if authViewModel.isAuthenticated {
-                    AppMainView()
+                    // C-01 — gate onboarding : tant que licence + MD + ≥1 SO
+                    // ne sont pas complets, l'utilisatrice n'accède pas à
+                    // AppMainView. SetupWizardView est présenté en plein écran
+                    // sans bouton Fermer.
+                    if onboarding.isComplete {
+                        AppMainView()
+                    } else {
+                        SetupWizardView(mode: .gate) {
+                            // À la complétion du wizard, débloquer immédiatement.
+                            onboarding.markComplete()
+                        }
+                    }
                 } else {
                     LoginView()
                         .overlay(alignment: .top) {
@@ -32,6 +44,21 @@ struct ContentView: View {
         }
         .environmentObject(authViewModel)
         .environmentObject(connectivity)
+        .onChange(of: authViewModel.isAuthenticated) { _, isAuth in
+            // C-01 — évaluer le gate après login. Aussi à la déconnexion :
+            // on reset pour ne pas mélanger les caches entre comptes.
+            if isAuth {
+                Task { await onboarding.evaluate() }
+            } else {
+                onboarding.reset()
+            }
+        }
+        .task {
+            // Premier boot : si déjà authentifié (Keychain restore), évaluer.
+            if authViewModel.isAuthenticated {
+                await onboarding.evaluate()
+            }
+        }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 // Au retour foreground, on revérifie la session (brief : auto-logout

@@ -110,7 +110,12 @@ struct ProfileView: View {
             .navigationTitle("Profil")
             .navigationBarTitleDisplayMode(.large)
             .sheet(isPresented: $showSetupWizard) {
-                SetupWizardView(onCompleted: {})
+                // C-01 — accès depuis Profil = mode editFromProfile (dismissible).
+                SetupWizardView(mode: .editFromProfile, onCompleted: {
+                    // Re-evaluate le gate au cas où l'édition aurait
+                    // potentiellement laissé l'onboarding incomplet.
+                    Task { await OnboardingState.shared.evaluate() }
+                })
             }
         }
     }
