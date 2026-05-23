@@ -37,7 +37,8 @@ struct ClientFormView: View {
     // Médical
     @State private var allergies: [String] = []
     @State private var medicalConditions: [String] = []
-    @State private var medicationsStr: String = ""
+    // Fork A Lot 2 / M-44 : médications en chips (au lieu d'un CSV).
+    @State private var medications: [String] = []
     // Contact d'urgence
     @State private var emergencyName: String = ""
     @State private var emergencyPhone: String = ""
@@ -80,7 +81,7 @@ struct ClientFormView: View {
             || !phone.isEmpty || dateOfBirth != nil || !addressLine1.isEmpty
             || !city.isEmpty || !postalCode.isEmpty || !accessNotes.isEmpty
             || !allergies.isEmpty || !medicalConditions.isEmpty
-            || !medicationsStr.isEmpty || !emergencyName.isEmpty
+            || !medications.isEmpty || !emergencyName.isEmpty
             || !emergencyPhone.isEmpty
     }
 
@@ -144,8 +145,14 @@ struct ClientFormView: View {
                 }
 
                 Section("Adresse") {
-                    TextField("Adresse (ligne 1)", text: $addressLine1)
-                        .accessibilityIdentifier("client.addressLine1")
+                    // Fork A Lot 2 / M-43 : autocomplete Apple Maps natif.
+                    // Remplit auto line1 / city / stateCode / postalCode au tap.
+                    AddressAutocompleteField(
+                        line1: $addressLine1,
+                        city: $city,
+                        stateCode: $stateCode,
+                        postalCode: $postalCode
+                    )
                     TextField("Adresse (ligne 2, optionnel)", text: $addressLine2)
                         .accessibilityIdentifier("client.addressLine2")
                     TextField("Ville", text: $city)
@@ -177,13 +184,15 @@ struct ClientFormView: View {
                         selection: $medicalConditions,
                         placeholder: "Autre antécédent…"
                     )
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Médications en cours").font(.subheadline).fontWeight(.semibold)
-                        Text("Séparez les entrées par une virgule.").font(.caption2).foregroundStyle(.secondary)
-                        TextField("Ex: Metformine 1000mg, Lisinopril 10mg", text: $medicationsStr, axis: .vertical)
-                            .lineLimit(1...3)
-                            .accessibilityIdentifier("client.medications")
-                    }
+                    // M-44 : médications en chips (saisie libre, pas de presets
+                    // car trop variable d'une nurse à l'autre). Cohérent
+                    // visuellement avec allergies / antécédents.
+                    ChipMultiSelect(
+                        title: "Médications en cours",
+                        predefined: [],
+                        selection: $medications,
+                        placeholder: "Ex: Metformine 1000mg…"
+                    )
                 }
 
                 Section("Contact d'urgence") {
@@ -224,11 +233,8 @@ struct ClientFormView: View {
                         .accessibilityIdentifier("client.save")
                 }
             }
-            .confirmationDialog(
-                "Abandonner la saisie ?",
-                isPresented: $showCancelConfirm,
-                titleVisibility: .visible
-            ) {
+            // Fork A Lot 1 / UI-T2 : alert au lieu de confirmationDialog.
+            .alert("Abandonner la saisie ?", isPresented: $showCancelConfirm) {
                 Button("Abandonner", role: .destructive) { dismiss() }
                 Button("Continuer la saisie", role: .cancel) {}
             } message: {
@@ -259,7 +265,7 @@ struct ClientFormView: View {
             accessNotes = c.accessNotes ?? ""
             allergies = c.allergies
             medicalConditions = c.medicalConditions
-            medicationsStr = c.medications.joined(separator: ", ")
+            medications = c.medications
             emergencyName = c.emergencyContactName ?? ""
             emergencyPhone = c.emergencyContactPhone ?? ""
         }
@@ -317,7 +323,7 @@ struct ClientFormView: View {
                     longitude: nil,
                     allergies: allergies,
                     medicalConditions: medicalConditions,
-                    medications: splitCSV(medicationsStr),
+                    medications: medications,
                     emergencyContactName: emergencyName.isEmpty ? nil : emergencyName,
                     emergencyContactPhone: emergencyPhone.isEmpty ? nil : emergencyPhone,
                     idDocumentPath: nil,
@@ -345,7 +351,7 @@ struct ClientFormView: View {
                     accessNotes: changed(accessNotes, c.accessNotes),
                     allergies: changedArray(allergies, c.allergies),
                     medicalConditions: changedArray(medicalConditions, c.medicalConditions),
-                    medications: changedArray(splitCSV(medicationsStr), c.medications),
+                    medications: changedArray(medications, c.medications),
                     emergencyContactName: changed(emergencyName, c.emergencyContactName),
                     emergencyContactPhone: changed(emergencyPhone, c.emergencyContactPhone)
                 )

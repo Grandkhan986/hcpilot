@@ -36,14 +36,20 @@ struct ConsentFlowView: View {
                     .padding(.top, 12)
                     .accessibilityIdentifier("consent.progress")
 
-                TabView(selection: $vm.step) {
-                    FormulationStep(vm: vm).tag(0)
-                    ConsentTextStep(vm: vm).tag(1)
-                    CheckpointsStep(vm: vm).tag(2)
-                    SignatureStep(vm: vm).tag(3)
+                // Fork A Lot 1 / UI-T1 : switch au lieu de TabView(.page).
+                Group {
+                    switch vm.step {
+                    case 0: FormulationStep(vm: vm)
+                    case 1: ConsentTextStep(vm: vm)
+                    case 2: CheckpointsStep(vm: vm)
+                    default: SignatureStep(vm: vm)
+                    }
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.easeInOut, value: vm.step)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                ))
+                .animation(.easeInOut(duration: 0.25), value: vm.step)
             }
             .navigationTitle("Consentement")
             .navigationBarTitleDisplayMode(.inline)
@@ -65,11 +71,8 @@ struct ConsentFlowView: View {
             .task {
                 await vm.loadFormulations()
             }
-            .confirmationDialog(
-                "Abandonner le consentement ?",
-                isPresented: $showCancelConfirm,
-                titleVisibility: .visible
-            ) {
+            // Fork A Lot 1 / UI-T2 : alert au lieu de confirmationDialog.
+            .alert("Abandonner le consentement ?", isPresented: $showCancelConfirm) {
                 Button("Abandonner", role: .destructive) { dismiss() }
                 Button("Continuer", role: .cancel) {}
             } message: {
@@ -285,6 +288,30 @@ private struct SignatureStep: View {
     @ObservedObject var vm: ConsentFlowViewModel
     @State private var canvasView = PKCanvasView()
 
+    /// Fork A Lot 1 / UI-T3 : XCUI ne sait pas dessiner sur PKCanvasView.
+    /// En présence du launch argument `-uitest`, on affiche un bouton de
+    /// debug qui injecte une signature canned (ligne diagonale 200×50pt,
+    /// valide pour `isSignatureUsable`).
+    private var isUITest: Bool {
+        ProcessInfo.processInfo.arguments.contains("-uitest")
+    }
+
+    /// Génère un PKDrawing avec un trait diagonal large (> 40×20pt) pour
+    /// passer la validation `isSignatureUsable`.
+    static func cannedSignature() -> PKDrawing {
+        let stroke = PKStroke(
+            ink: PKInk(.pen, color: .black),
+            path: PKStrokePath(
+                controlPoints: [
+                    PKStrokePoint(location: CGPoint(x: 10, y: 10), timeOffset: 0, size: CGSize(width: 2, height: 2), opacity: 1, force: 1, azimuth: 0, altitude: 0),
+                    PKStrokePoint(location: CGPoint(x: 220, y: 60), timeOffset: 0.1, size: CGSize(width: 2, height: 2), opacity: 1, force: 1, azimuth: 0, altitude: 0),
+                ],
+                creationDate: Date()
+            )
+        )
+        return PKDrawing(strokes: [stroke])
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Signature du client")
@@ -326,6 +353,16 @@ private struct SignatureStep: View {
                 }
             }
             .padding(.horizontal)
+
+            // UI-T3 : bouton debug uniquement en run XCUI.
+            if isUITest {
+                Button("⚙️ Signature de test (debug XCUI)") {
+                    canvasView.drawing = Self.cannedSignature()
+                }
+                .font(.caption)
+                .padding(.horizontal)
+                .accessibilityIdentifier("consent.signature.debugFill")
+            }
 
             Spacer(minLength: 0)
 

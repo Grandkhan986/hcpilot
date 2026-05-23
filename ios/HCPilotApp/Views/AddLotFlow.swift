@@ -163,11 +163,8 @@ struct LotEntryView: View {
                         .accessibilityIdentifier("lot.add")
                 }
             }
-            .confirmationDialog(
-                "Abandonner la saisie du lot ?",
-                isPresented: $showCancelConfirm,
-                titleVisibility: .visible
-            ) {
+            // Fork A Lot 1 / UI-T2 : alert au lieu de confirmationDialog.
+            .alert("Abandonner la saisie du lot ?", isPresented: $showCancelConfirm) {
                 Button("Abandonner", role: .destructive) { onCancel() }
                 Button("Continuer la saisie", role: .cancel) {}
             } message: {

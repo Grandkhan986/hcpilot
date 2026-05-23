@@ -160,6 +160,18 @@ struct HomeView: View {
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .shadow(color: Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
+
+                // Fork A Lot 2 / H-29 : légende factuelle sous la carte.
+                // Clarifie ce que représente la polyline + nombre de stops.
+                HStack(spacing: 6) {
+                    Image(systemName: "point.topleft.down.curvedto.point.bottomright.up")
+                        .font(.caption2)
+                    Text("Trajet optimisé · \(viewModel.routeStops.count) stop\(viewModel.routeStops.count > 1 ? "s" : "")")
+                        .font(.caption2)
+                }
+                .foregroundStyle(.secondary)
+                .padding(.top, 2)
+                .accessibilityIdentifier("home.mapLegend")
             }
             .padding(.horizontal)
         } else if viewModel.nextActiveSession != nil {

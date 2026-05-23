@@ -9,6 +9,12 @@ struct SyncStatusBadge: View {
     /// Permet à l'écran qui hôte le badge de signaler une sync en cours.
     let isSyncing: Bool
 
+    /// Fork A Lot 2 / H-23 : tick toutes les 30s pour faire évoluer le label
+    /// "Sync il y a Xm" en temps réel (sans cela il restait figé entre les
+    /// refreshes du Home).
+    @State private var tick = Date()
+    private let ticker = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
+
     init(isSyncing: Bool = false) {
         self.isSyncing = isSyncing
     }
@@ -30,6 +36,7 @@ struct SyncStatusBadge: View {
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Statut de synchronisation : \(label)")
+        .onReceive(ticker) { now in tick = now }
     }
 
     // MARK: - State
@@ -48,7 +55,8 @@ struct SyncStatusBadge: View {
             return queue.count > 0 ? .offlineWithPending : .offline
         }
         if let last = connectivity.lastSyncAt {
-            let minutes = Int(Date().timeIntervalSince(last) / 60)
+            // H-23 : `tick` change toutes les 30s → recalcul du label.
+            let minutes = Int(tick.timeIntervalSince(last) / 60)
             return .onlineFresh(minutes: max(minutes, 0))
         }
         return .online

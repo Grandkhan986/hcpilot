@@ -15,7 +15,7 @@ final class ClientCreationUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-seed", "deterministic"]
+        app.launchArguments += ["-uitest", "-uitest-skipOnboarding", "-seed", "deterministic"]
         app.launch()
     }
 
@@ -121,11 +121,9 @@ final class ClientCreationUITests: XCTestCase {
         XCTAssertFalse(saveButton.isEnabled, "Save doit être désactivé avec email invalide")
     }
 
-    // MARK: - Test 4 : confirm Annuler quand dirty (skip — voir TODO UI-T2)
-
+    // MARK: - Test 4 : confirm Annuler quand dirty
+    // Fork A Lot 1 / UI-T2 : ré-activé après passage à alert(...).
     func test_cancel_with_dirty_form_shows_confirm() throws {
-        try XCTSkipIf(true, "confirmationDialog invisible XCUI iOS 18+ — voir TODO UI-T2")
-
         login()
         goToClientsTab()
         openCreateForm()
@@ -135,8 +133,8 @@ final class ClientCreationUITests: XCTestCase {
         cancelButton.tap()
 
         XCTAssertTrue(
-            app.buttons["Continuer la saisie"].waitForExistence(timeout: 3),
-            "Dialog de confirmation doit s'afficher"
+            app.alerts.buttons["Continuer la saisie"].waitForExistence(timeout: longTimeout),
+            "L'alerte de confirmation doit s'afficher"
         )
     }
 

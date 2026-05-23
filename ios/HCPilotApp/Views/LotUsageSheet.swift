@@ -113,11 +113,10 @@ struct LotUsageSheet: View {
                     .accessibilityIdentifier("lot.cancel")
                 }
             }
-            .confirmationDialog(
-                "Abandonner la saisie ?",
-                isPresented: $showCancelConfirm,
-                titleVisibility: .visible
-            ) {
+            // Fork A Lot 1 / UI-T2 : alert au lieu de confirmationDialog
+            // sur le flow cancel (testé). Le skipScan reste en action-sheet
+            // car il sert d'avertissement fort (FDA), non testé en XCUI.
+            .alert("Abandonner la saisie ?", isPresented: $showCancelConfirm) {
                 Button("Abandonner", role: .destructive) { dismiss() }
                 Button("Continuer la saisie", role: .cancel) {}
             } message: {

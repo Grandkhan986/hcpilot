@@ -19,7 +19,7 @@ final class OfflineBehaviorUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-seed", "deterministic"]
+        app.launchArguments += ["-uitest", "-uitest-skipOnboarding", "-seed", "deterministic"]
         app.launch()
     }
 
@@ -80,11 +80,12 @@ final class OfflineBehaviorUITests: XCTestCase {
         )
         clear.tap()
 
-        // Le confirmationDialog n'est pas toujours queryable en XCUI iOS 18 (cf. UI-T2),
-        // on accepte les deux containers ou un skip propre.
-        let anyDestructive = app.buttons["Vider"]
-        if !anyDestructive.waitForExistence(timeout: 2) {
-            try XCTSkipIf(true, "confirmationDialog non queryable XCUI — voir UI-T2")
-        }
+        // Fork A Lot 1 / UI-T2 : alert au lieu de confirmationDialog → queryable.
+        XCTAssertTrue(
+            app.alerts.buttons["Vider"].waitForExistence(timeout: longTimeout),
+            "L'alerte de confirmation doit s'afficher"
+        )
+        // Cancel pour ne pas réellement vider la queue
+        app.alerts.buttons["Annuler"].tap()
     }
 }

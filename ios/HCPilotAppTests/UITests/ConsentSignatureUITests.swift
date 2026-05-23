@@ -18,7 +18,7 @@ final class ConsentSignatureUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-seed", "deterministic"]
+        app.launchArguments += ["-uitest", "-uitest-skipOnboarding", "-seed", "deterministic"]
         app.launch()
     }
 
@@ -94,9 +94,62 @@ final class ConsentSignatureUITests: XCTestCase {
         )
     }
 
-    // MARK: - Test 4 : parcours nominal complet (skipped — PKCanvasView)
-
+    // MARK: - Test 4 : parcours nominal complet via debug-fill signature
+    //
+    // Fork A Lot 1 / UI-T3 : ré-activé via bouton "Signature de test" injecté
+    // dans SignatureStep quand `-uitest` est dans launchArguments. Le bouton
+    // remplit canvasView.drawing avec un trait canned qui passe
+    // isSignatureUsable (40×20pt minimum).
     func test_consent_full_flow_with_signature() throws {
-        try XCTSkipIf(true, "Signature PencilKit non testable en XCUI standard — voir TODO UI-T3.")
+        login()
+        openSessionDetail()
+        try XCTSkipUnless(openConsentFlow(), "Session déjà signée d'une run précédente")
+
+        // Step 0 — sélectionner une SO
+        let anySO = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'consent.so.'")
+        ).firstMatch
+        try XCTSkipUnless(
+            anySO.waitForExistence(timeout: longTimeout),
+            "Pas de standing order active dans le seed"
+        )
+        anySO.tap()
+
+        // Step 1 — Continuer
+        let textContinue = app.buttons["consent.text.continue"]
+        XCTAssertTrue(textContinue.waitForExistence(timeout: longTimeout))
+        textContinue.tap()
+
+        // Step 2 — cocher tous les checkpoints
+        let toggles = app.switches.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'consent.checkpoint.'")
+        )
+        for i in 0..<toggles.count {
+            let t = toggles.element(boundBy: i)
+            if t.exists { t.tap() }
+        }
+        let toSignature = app.buttons["consent.checkpoints.continue"]
+        XCTAssertTrue(toSignature.waitForExistence(timeout: 3))
+        toSignature.tap()
+
+        // Step 3 — debug fill + confirm
+        let debugFill = app.buttons["consent.signature.debugFill"]
+        XCTAssertTrue(
+            debugFill.waitForExistence(timeout: longTimeout),
+            "Le bouton debug signature doit être présent en mode -uitest"
+        )
+        debugFill.tap()
+
+        let confirm = app.buttons["consent.signature.confirm"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 3))
+        XCTAssertTrue(confirm.isEnabled, "Le confirm doit s'activer après debug fill")
+        confirm.tap()
+
+        // Alert succès "Consentement enregistré"
+        XCTAssertTrue(
+            app.alerts.staticTexts["Consentement enregistré"].waitForExistence(timeout: longTimeout)
+                || app.staticTexts["Consentement enregistré"].waitForExistence(timeout: 2),
+            "Le succès doit être affiché en alert"
+        )
     }
 }

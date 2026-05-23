@@ -122,12 +122,12 @@ struct MedicalDirectorEditView: View {
                     .accessibilityIdentifier("md.edit.save")
                 }
             }
-            .confirmationDialog(
+            // Fork A Lot 1 / UI-T2 : alert au lieu de confirmationDialog.
+            .alert(
                 isLastActiveMD
                     ? "Désactiver votre seul MD actif ?"
                     : "Désactiver ce MD ?",
-                isPresented: $showDeactivateConfirm,
-                titleVisibility: .visible
+                isPresented: $showDeactivateConfirm
             ) {
                 Button("Désactiver", role: .destructive) {
                     Task {

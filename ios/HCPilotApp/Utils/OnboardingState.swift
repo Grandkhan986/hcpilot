@@ -24,6 +24,19 @@ final class OnboardingState: ObservableObject {
         // Fast-path : on lit le cache local pour ne pas bloquer l'UI au boot.
         // L'évaluation backend confirme ou infirme dès le premier appel.
         isComplete = UserDefaults.standard.bool(forKey: userDefaultsKey)
+
+        // Fork A Lot 1 — bypass du gate pour les UI tests qui doivent
+        // accéder à AppMainView (Profile, etc.) sans passer par le wizard.
+        // À ne pas confondre avec `-uitest` seul qui n'affecte que la
+        // signature canned du consent flow.
+        if ProcessInfo.processInfo.arguments.contains("-uitest-skipOnboarding") {
+            isComplete = true
+            UserDefaults.standard.set(true, forKey: userDefaultsKey)
+            // Reset aussi la step persistée du wizard pour que les tests
+            // qui ouvrent SetupWizardView en editFromProfile démarrent à
+            // step 0 (Welcome).
+            UserDefaults.standard.removeObject(forKey: "setup.lastStep")
+        }
     }
 
     /// Évalue depuis le backend. Sur succès, met à jour le cache local.

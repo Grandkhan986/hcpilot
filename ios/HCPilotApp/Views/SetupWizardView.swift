@@ -38,23 +38,30 @@ struct SetupWizardView: View {
                     .padding(.top, 12)
                     .accessibilityIdentifier("onboarding.progress")
 
-                TabView(selection: $vm.step) {
-                    WelcomeStep(vm: vm).tag(0)
-                    LicenseStep(vm: vm).tag(1)
-                    MedicalDirectorStep(vm: vm).tag(2)
-                    StandingOrderStep(vm: vm).tag(3)
-                    DoneStep(vm: vm, onClose: {
-                        // À la complétion, on clear la step persistée et on
-                        // signale au parent (qui peut .markComplete() le gate).
+                // Fork A Lot 1 / UI-T1 : switch au lieu de TabView(.page).
+                // Démonte chaque step à la transition → XCUI ne voit qu'un
+                // seul bouton "Continuer" à la fois. L'animation .transition
+                // préserve la sensation de wizard.
+                Group {
+                    switch vm.step {
+                    case 0: WelcomeStep(vm: vm)
+                    case 1: LicenseStep(vm: vm)
+                    case 2: MedicalDirectorStep(vm: vm)
+                    case 3: StandingOrderStep(vm: vm)
+                    default: DoneStep(vm: vm, onClose: {
                         vm.clearPersistedStep()
                         onCompleted()
                         if mode == .editFromProfile {
                             dismiss()
                         }
-                    }).tag(4)
+                    })
+                    }
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.easeInOut, value: vm.step)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                ))
+                .animation(.easeInOut(duration: 0.25), value: vm.step)
             }
             .navigationTitle("Configuration de la pratique")
             .navigationBarTitleDisplayMode(.inline)
@@ -73,11 +80,9 @@ struct SetupWizardView: View {
                     }
                 }
             }
-            .confirmationDialog(
-                "Quitter la configuration ?",
-                isPresented: $showDismissConfirm,
-                titleVisibility: .visible
-            ) {
+            // Fork A Lot 1 / UI-T2 : alert au lieu de confirmationDialog
+            // (mieux supporté par XCUI en iOS 18+).
+            .alert("Quitter la configuration ?", isPresented: $showDismissConfirm) {
                 Button("Quitter, j'y reviendrai", role: .destructive) { dismiss() }
                 Button("Continuer la configuration", role: .cancel) {}
             } message: {

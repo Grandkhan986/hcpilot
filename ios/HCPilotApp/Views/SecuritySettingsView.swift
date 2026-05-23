@@ -75,11 +75,8 @@ struct SecuritySettingsView: View {
         }
         .navigationTitle("Sécurité")
         .navigationBarTitleDisplayMode(.inline)
-        .confirmationDialog(
-            "Verrouiller la session ?",
-            isPresented: $showLockConfirm,
-            titleVisibility: .visible
-        ) {
+        // Fork A Lot 1 / UI-T2 : alert au lieu de confirmationDialog.
+        .alert("Verrouiller la session ?", isPresented: $showLockConfirm) {
             Button("Verrouiller", role: .destructive) { authViewModel.logout() }
             Button("Annuler", role: .cancel) {}
         } message: {

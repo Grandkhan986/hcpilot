@@ -17,7 +17,7 @@ final class SessionLifecycleUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-seed", "deterministic"]
+        app.launchArguments += ["-uitest", "-uitest-skipOnboarding", "-seed", "deterministic"]
         app.launch()
     }
 

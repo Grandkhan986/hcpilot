@@ -191,13 +191,29 @@ struct SessionDetailView: View {
                     }
                 }
 
-                // Status
-                HStack {
-                    StatusBadge(status: session.status)
-                    Spacer()
-                    Text(session.scheduledAt, formatter: Self.dateFormatter)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                // Status + timer in-progress (Fork A Lot 2 / H-67)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        StatusBadge(status: session.status)
+                        Spacer()
+                        Text(session.scheduledAt, formatter: Self.dateFormatter)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    if session.status == .inProgress, let startedAt = session.startedAt {
+                        HStack(spacing: 6) {
+                            Image(systemName: "clock.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                            Text("En cours depuis")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text(startedAt, style: .timer)
+                                .font(.caption2.monospacedDigit())
+                                .foregroundStyle(.orange)
+                                .accessibilityIdentifier("session.inProgressTimer")
+                        }
+                    }
                 }
 
                 // Address

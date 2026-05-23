@@ -99,11 +99,8 @@ struct MutationQueueView: View {
         }
         .navigationTitle("File de synchronisation")
         .navigationBarTitleDisplayMode(.inline)
-        .confirmationDialog(
-            "Vider la file sans synchroniser ?",
-            isPresented: $showClearConfirm,
-            titleVisibility: .visible
-        ) {
+        // Fork A Lot 1 / UI-T2 : alert au lieu de confirmationDialog.
+        .alert("Vider la file sans synchroniser ?", isPresented: $showClearConfirm) {
             Button("Vider", role: .destructive) {
                 MutationQueue.shared.clear()
             }

@@ -20,7 +20,7 @@ final class OnboardingUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-seed", "deterministic"]
+        app.launchArguments += ["-uitest", "-uitest-skipOnboarding", "-seed", "deterministic"]
         app.launch()
     }
 
@@ -78,13 +78,10 @@ final class OnboardingUITests: XCTestCase {
 
     // MARK: - Test 1 : parcours nominal complet
     //
-    // Connu fragile : la transition de TabView paginée + les POST séquentiels
-    // au backend rendent l'attente du bouton « Continuer » de la step
-    // suivante peu déterministe sans mock réseau. À ré-activer une fois le
-    // mock APIService en place (cf. audit-parcours/TODO-improvements.md UI-T1).
+    // Fork A Lot 1 / UI-T1 : ré-activé après passage de TabView(.page) à
+    // `switch vm.step` qui démonte chaque step (un seul bouton "Continuer"
+    // visible à la fois).
     func test_onboarding_nominal_flow_reaches_done() throws {
-        try XCTSkipIf(true, "TabView paginée + backend live = flaky. Voir TODO UI-T1.")
-
         login()
         goToProfileTab()
         openWizard()
@@ -156,12 +153,9 @@ final class OnboardingUITests: XCTestCase {
 
     // MARK: - Test 3 : confirm dismiss quand données partielles non envoyées
     //
-    // Connu fragile : SwiftUI `confirmationDialog` ne semble pas exposer ses
-    // boutons de façon fiable aux requêtes XCUI dans iOS 18+. À investiguer
-    // (changer pour `alert(...)` ? interroger `.dialogs[...]`?). Voir TODO UI-T2.
+    // Fork A Lot 1 / UI-T2 : ré-activé après passage de confirmationDialog
+    // à `alert(...)` (queryable via app.alerts).
     func test_close_with_unsaved_work_shows_confirm() throws {
-        try XCTSkipIf(true, "Query confirmationDialog flaky en XCUI. Voir TODO UI-T2.")
-
         login()
         goToProfileTab()
         openWizard()
@@ -172,21 +166,12 @@ final class OnboardingUITests: XCTestCase {
 
         app.buttons["onboarding.close"].tap()
 
-        // Le confirmationDialog : SwiftUI le surface en sheet sur iOS récent.
-        // On essaie plusieurs containers + une query directe sur le bouton.
-        let buttonLabel = "Continuer la configuration"
-        let stayInSheet = app.sheets.buttons[buttonLabel]
-        let stayInAlert = app.alerts.buttons[buttonLabel]
-        let stayAnywhere = app.buttons[buttonLabel]
-
-        let appeared = stayInSheet.waitForExistence(timeout: longTimeout)
-            || stayInAlert.waitForExistence(timeout: 1)
-            || stayAnywhere.waitForExistence(timeout: 1)
-        XCTAssertTrue(appeared, "Le dialog de confirmation doit s'afficher")
-
-        if stayInSheet.exists { stayInSheet.tap() }
-        else if stayInAlert.exists { stayInAlert.tap() }
-        else { stayAnywhere.tap() }
+        let stayInAlert = app.alerts.buttons["Continuer la configuration"]
+        XCTAssertTrue(
+            stayInAlert.waitForExistence(timeout: longTimeout),
+            "L'alerte de confirmation doit s'afficher"
+        )
+        stayInAlert.tap()
 
         XCTAssertTrue(
             app.textFields["onboarding.firstName"].waitForExistence(timeout: 5),
