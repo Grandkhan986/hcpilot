@@ -65,16 +65,6 @@ class HomeViewModel: ObservableObject {
         return .dayCompleted
     }
 
-    /// Salutation horaire (brief §refonte Home).
-    var timeOfDayGreeting: String {
-        let hour = Calendar.current.component(.hour, from: Date())
-        switch hour {
-        case 5..<12: return "Bonjour"
-        case 12..<18: return "Bon après-midi"
-        default: return "Bonsoir"
-        }
-    }
-
     /// Nom affiché dans la salutation, préfixé selon le type de licence.
     /// RN/LPN/NP/PA → prénom seul ; MD/DO → « Dr. Nom ».
     var displayName: String {

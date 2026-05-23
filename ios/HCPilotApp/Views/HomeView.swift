@@ -55,7 +55,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(viewModel.timeOfDayGreeting), \(viewModel.displayName)")
+                    Text("Bonjour, \(viewModel.displayName)")
                         .font(.headline)
                     Text(Date.now, formatter: viewModel.dateFormatter)
                         .font(.subheadline)
