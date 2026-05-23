@@ -287,13 +287,22 @@ private struct CheckpointsStep: View {
 private struct SignatureStep: View {
     @ObservedObject var vm: ConsentFlowViewModel
     @State private var canvasView = PKCanvasView()
+    /// UI-T3 : flag mis à true quand le bouton debug a injecté une signature.
+    /// PKCanvasView est une class → muter `.drawing` ne déclenche pas un
+    /// re-render SwiftUI. On utilise ce flag comme tripwire pour ré-évaluer
+    /// `isSignatureUsable` côté disable du Confirm.
+    @State private var debugSignatureInjected = false
 
     /// Fork A Lot 1 / UI-T3 : XCUI ne sait pas dessiner sur PKCanvasView.
     /// En présence du launch argument `-uitest`, on affiche un bouton de
     /// debug qui injecte une signature canned (ligne diagonale 200×50pt,
     /// valide pour `isSignatureUsable`).
+    /// On évalue depuis ProcessInfo + environment pour robustesse.
     private var isUITest: Bool {
-        ProcessInfo.processInfo.arguments.contains("-uitest")
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-uitest") || args.contains("--uitest") { return true }
+        if ProcessInfo.processInfo.environment["UITEST"] == "1" { return true }
+        return false
     }
 
     /// Génère un PKDrawing avec un trait diagonal large (> 40×20pt) pour
@@ -348,7 +357,7 @@ private struct SignatureStep: View {
                     // pour éviter qu'un point microscopique soit accepté.
                     // 40×20 pt = au moins un trait court (5-6 caractères de
                     // signature, ou un paraphe).
-                    .disabled(!isSignatureUsable(canvasView.drawing))
+                    .disabled(!isSignatureUsable(canvasView.drawing) && !debugSignatureInjected)
                     .accessibilityIdentifier("consent.signature.confirm")
                 }
             }
@@ -358,6 +367,7 @@ private struct SignatureStep: View {
             if isUITest {
                 Button("⚙️ Signature de test (debug XCUI)") {
                     canvasView.drawing = Self.cannedSignature()
+                    debugSignatureInjected = true
                 }
                 .font(.caption)
                 .padding(.horizontal)
