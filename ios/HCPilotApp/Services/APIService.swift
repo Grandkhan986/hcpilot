@@ -35,6 +35,27 @@ final class APIService {
         return h
     }
 
+    /// L2-5 — DateFormatters cachés (1 par format). Avant : on en allouait
+    /// 5 nouveaux par date décodée, soit ~1000 allocations par appel à
+    /// /audit_logs (100 entries × 2 dates × 5 formats). Maintenant alloué
+    /// une fois, capturé par la closure de dateDecodingStrategy.
+    private static let dateFormatters: [DateFormatter] = {
+        let formats = [
+            "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ",
+            "yyyy-MM-dd'T'HH:mm:ssZZZZZ",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS",
+            "yyyy-MM-dd'T'HH:mm:ss",
+            "yyyy-MM-dd",
+        ]
+        return formats.map { fmt in
+            let f = DateFormatter()
+            f.dateFormat = fmt
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.timeZone = TimeZone(secondsFromGMT: 0)
+            return f
+        }
+    }()
+
     private let decoder: JSONDecoder = {
         let d = JSONDecoder()
         // Audit H2 : conversion automatique snake_case JSON → camelCase Swift.
@@ -50,19 +71,8 @@ final class APIService {
                 with: "$1",
                 options: .regularExpression
             )
-            let formats = [
-                "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ",
-                "yyyy-MM-dd'T'HH:mm:ssZZZZZ",
-                "yyyy-MM-dd'T'HH:mm:ss.SSS",
-                "yyyy-MM-dd'T'HH:mm:ss",
-                "yyyy-MM-dd",
-            ]
-            for format in formats {
-                let f = DateFormatter()
-                f.dateFormat = format
-                f.locale = Locale(identifier: "en_US_POSIX")
-                f.timeZone = TimeZone(secondsFromGMT: 0)
-                if let date = f.date(from: normalized) {
+            for formatter in APIService.dateFormatters {
+                if let date = formatter.date(from: normalized) {
                     return date
                 }
             }
@@ -158,10 +168,35 @@ final class APIService {
         SecureStorage.shared.clearSession()
     }
 
+    /// L2-7 — Batching de l'écriture Keychain.
+    /// Avant : `setDate` à chaque requête → Keychain write par appel HTTP
+    /// (latence cumulée non-négligeable sur des bursts).
+    /// Maintenant : on garde un timestamp mémoire, on ne flush au Keychain
+    /// que si la dernière persistance date de plus de 60 s. L'inactivité
+    /// reste détectable à la précision de la minute.
+    private let activityLock = NSLock()
+    private var lastActivityMemory: Date?
+    private var lastActivityPersisted: Date?
+    private static let activityFlushInterval: TimeInterval = 60
+
     /// Met à jour le timestamp d'activité — appelé à chaque requête HTTP.
     /// Permet à l'AuthViewModel de juger si la session doit être verrouillée.
     private func touchActivity() {
-        SecureStorage.shared.setDate(Date(), forKey: .lastActivity)
+        let now = Date()
+        activityLock.lock()
+        let needsFlush: Bool
+        if let last = lastActivityPersisted,
+           now.timeIntervalSince(last) < Self.activityFlushInterval {
+            needsFlush = false
+        } else {
+            needsFlush = true
+            lastActivityPersisted = now
+        }
+        lastActivityMemory = now
+        activityLock.unlock()
+        if needsFlush {
+            SecureStorage.shared.setDate(now, forKey: .lastActivity)
+        }
     }
 
     // MARK: - Generic Requests
@@ -226,7 +261,11 @@ final class APIService {
         }
     }
 
-    private func post<T: Decodable>(_ endpoint: String, body: Encodable) async throws -> T {
+    private func post<T: Decodable>(
+        _ endpoint: String,
+        body: Encodable,
+        timeout: TimeInterval = RequestTimeout.default
+    ) async throws -> T {
         guard let url = URL(string: baseURL + endpoint) else {
             throw APIError.invalidURL(endpoint)
         }
@@ -236,6 +275,8 @@ final class APIService {
         request.method = .post
         request.headers = headers
         request.httpBody = jsonData
+        // L2-6 — Override timeout par requête (upload PDF = 60s vs default 30s).
+        request.timeoutInterval = timeout
 
         do {
             let data = try await afSession.request(request)
@@ -566,7 +607,8 @@ final class APIService {
     }
 
     func createInvoice(invoice: Invoice) async throws -> Invoice {
-        return try await post("/invoices", body: invoice)
+        // L2-6 — PDF facture potentiellement lourd → timeout upload.
+        return try await post("/invoices", body: invoice, timeout: RequestTimeout.upload)
     }
 
     // MARK: - Reports
@@ -630,7 +672,8 @@ final class APIService {
     // MARK: - Consents
 
     func createConsent(_ payload: CreateConsentRequest) async throws -> ConsentSummary {
-        return try await post("/consents", body: payload)
+        // L2-6 — PDF de consentement en base64 = body lourd → timeout upload.
+        return try await post("/consents", body: payload, timeout: RequestTimeout.upload)
     }
 
     func getConsent(forSession sessionId: String) async throws -> ConsentSummary {
