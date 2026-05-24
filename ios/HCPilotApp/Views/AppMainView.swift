@@ -85,18 +85,6 @@ struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
-struct SecondaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundColor(.blue)
-            .padding(8)
-            .background(Color.blue.opacity(0.1))
-            .cornerRadius(8)
-            .scaleEffect(configuration.isPressed ? 0.95 : 1)
-            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
-    }
-}
-
 #Preview {
     AppMainView()
         .environmentObject(AuthViewModel())

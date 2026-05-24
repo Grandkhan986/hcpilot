@@ -2113,16 +2113,6 @@ async def get_revenue_report(
         }
     }
 
-@app.get("/reports/stock")
-async def get_stock_report(payload: dict = Depends(verify_token)):
-    """Get stock report"""
-    return {
-        "total_items": 100,
-        "low_stock_items": 5,
-        "expired_items": 0,
-        "total_value": 5000.00
-    }
-
 class OptimizeVisitInput(BaseModel):
     """Modèle léger pour POST /optimize/routes. On n'a besoin que de l'id et
     des coords (lat/lng directs ou résolus depuis le patient). Évite d'imposer

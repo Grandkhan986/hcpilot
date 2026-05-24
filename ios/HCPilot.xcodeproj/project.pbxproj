@@ -91,7 +91,6 @@
 		F2C3D67FDB9BC1F04FE83D6D /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD524E556E4CB64EDA8F5965 /* HomeView.swift */; };
 		F332EBBDB5ECFA8419BF5994 /* AuditLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 804FC12A0277695424272944 /* AuditLog.swift */; };
 		F971DC6D613AB6BF680ED189 /* Client.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EC4C5F57C3153C8387F4206 /* Client.swift */; };
-		FC51E2512B1E31C93706CA35 /* AdditionalViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 593FCD41AFAD8354257A05DE /* AdditionalViews.swift */; };
 		FEBC353AF0524B49CEB08107 /* SessionLifecycleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB6BA7662C67C4AC3CD7DB9 /* SessionLifecycleUITests.swift */; };
 /* End PBXBuildFile section */
 
@@ -142,7 +141,6 @@
 		4CC69ABE1BC918D8683F94F4 /* OfflineCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineCache.swift; sourceTree = "<group>"; };
 		5076C6CD0AC9129B5C3BAB11 /* MedicalDirectorEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicalDirectorEditView.swift; sourceTree = "<group>"; };
 		5706CE8403DE49E801256CF8 /* AddressAutocompleteField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressAutocompleteField.swift; sourceTree = "<group>"; };
-		593FCD41AFAD8354257A05DE /* AdditionalViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdditionalViews.swift; sourceTree = "<group>"; };
 		5CC6F0CF78E1251EE1B4C1EE /* AuditLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditLogView.swift; sourceTree = "<group>"; };
 		5FB35816B24CC29B29236138 /* HomeDashboardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDashboardUITests.swift; sourceTree = "<group>"; };
 		627009E0153837A18145BB56 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
@@ -218,7 +216,6 @@
 		0CA4F42C775818E465E4905A /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				593FCD41AFAD8354257A05DE /* AdditionalViews.swift */,
 				DB39FC80B037368C4A32EA5D /* AddLotFlow.swift */,
 				62E639CF608C792A2E21318D /* AppMainView.swift */,
 				5CC6F0CF78E1251EE1B4C1EE /* AuditLogView.swift */,
@@ -511,7 +508,6 @@
 				7256B32D534745BE46268BC5 /* APIDTOs.swift in Sources */,
 				E6F8FDA773CE5B0B13EE71E2 /* APIService.swift in Sources */,
 				C4A1DC593CC7B106AFD5AF04 /* AddLotFlow.swift in Sources */,
-				FC51E2512B1E31C93706CA35 /* AdditionalViews.swift in Sources */,
 				3F1B49B34ED87D840934E818 /* AddressAutocompleteField.swift in Sources */,
 				1AD8A7AEE9BA328B900FD86C /* AppMainView.swift in Sources */,
 				F332EBBDB5ECFA8419BF5994 /* AuditLog.swift in Sources */,
