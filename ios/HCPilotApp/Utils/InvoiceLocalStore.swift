@@ -20,6 +20,7 @@ final class InvoiceLocalStore {
 
     private let pathsKey = "invoice.pdf.paths"
     private let counterKey = "invoice.lastNumber"
+    private let counterYearKey = "invoice.counter.year"
     private let sessionToInvoiceKey = "invoice.sessionMap"
     private let invoicesMetadataKey = "invoice.metadata"
 
@@ -37,11 +38,21 @@ final class InvoiceLocalStore {
 
     /// Génère le prochain numéro de facture séquentiel, format INV-YYYY-XXXXX.
     /// Le compteur est local — en production il viendra du backend.
+    ///
+    /// P-8 — Reset annuel : si l'année a changé depuis le dernier numéro, le
+    /// compteur repart à 1 (convention comptable US standard).
     func nextInvoiceNumber(for date: Date = Date()) -> String {
-        let current = UserDefaults.standard.integer(forKey: counterKey)
+        let year = Calendar.current.component(.year, from: date)
+        let lastYear = UserDefaults.standard.integer(forKey: counterYearKey)
+
+        var current = UserDefaults.standard.integer(forKey: counterKey)
+        if year != lastYear {
+            current = 0
+            UserDefaults.standard.set(year, forKey: counterYearKey)
+        }
+
         let next = current + 1
         UserDefaults.standard.set(next, forKey: counterKey)
-        let year = Calendar.current.component(.year, from: date)
         return String(format: "INV-%04d-%05d", year, next)
     }
 
@@ -117,6 +128,7 @@ final class InvoiceLocalStore {
     func resetForTests() {
         UserDefaults.standard.removeObject(forKey: pathsKey)
         UserDefaults.standard.removeObject(forKey: counterKey)
+        UserDefaults.standard.removeObject(forKey: counterYearKey)
         UserDefaults.standard.removeObject(forKey: sessionToInvoiceKey)
         UserDefaults.standard.removeObject(forKey: invoicesMetadataKey)
         try? FileManager.default.removeItem(at: invoicesDir)

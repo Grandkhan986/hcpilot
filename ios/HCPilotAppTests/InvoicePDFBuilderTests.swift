@@ -82,6 +82,38 @@ final class InvoicePDFBuilderTests: XCTestCase {
         XCTAssertEqual(n3, "INV-2024-00003")
     }
 
+    /// P-8 — Reset annuel du compteur (convention comptable US).
+    func test_invoice_number_resets_at_year_change() {
+        // 2026-05-22 = timestamp 1779744000
+        let date2026 = Date(timeIntervalSince1970: 1779744000)
+        // 2027-05-22 = timestamp 1811280000
+        let date2027 = Date(timeIntervalSince1970: 1811280000)
+
+        let n2026_a = InvoiceLocalStore.shared.nextInvoiceNumber(for: date2026)
+        let n2026_b = InvoiceLocalStore.shared.nextInvoiceNumber(for: date2026)
+        let n2027_a = InvoiceLocalStore.shared.nextInvoiceNumber(for: date2027)
+        let n2027_b = InvoiceLocalStore.shared.nextInvoiceNumber(for: date2027)
+
+        XCTAssertEqual(n2026_a, "INV-2026-00001")
+        XCTAssertEqual(n2026_b, "INV-2026-00002")
+        XCTAssertEqual(n2027_a, "INV-2027-00001", "Le compteur doit repartir à 1 en 2027")
+        XCTAssertEqual(n2027_b, "INV-2027-00002")
+    }
+
+    /// P-8 sanity : si on retourne en arrière dans l'année précédente après
+    /// avoir compté en 2027, le compteur repart à 1 pour 2026 aussi
+    /// (cas pratique très improbable mais cohérence du reset).
+    func test_invoice_number_resets_on_year_regression() {
+        let date2026 = Date(timeIntervalSince1970: 1779744000)
+        let date2027 = Date(timeIntervalSince1970: 1811280000)
+
+        _ = InvoiceLocalStore.shared.nextInvoiceNumber(for: date2027)
+        let backTo2026 = InvoiceLocalStore.shared.nextInvoiceNumber(for: date2026)
+
+        XCTAssertEqual(backTo2026, "INV-2026-00001",
+                      "Changement d'année (dans n'importe quel sens) reset le compteur")
+    }
+
     func test_save_and_load_pdf_for_invoice_id() throws {
         let payload = "fake-pdf-content".data(using: .utf8)!
         _ = try InvoiceLocalStore.shared.savePDF(payload, forInvoiceId: "inv-test-42")

@@ -88,7 +88,9 @@ final class InvoiceServiceIdempotenceTests: XCTestCase {
         _ = try await generate(s)  // retry idempotent
 
         // Le prochain numéro libre (pour une autre session) doit être 00002.
-        let next = InvoiceLocalStore.shared.nextInvoiceNumber(for: Date(timeIntervalSince1970: 1716393600))
+        // On utilise Date() pour matcher l'année du compteur initial (P-8
+        // reset si l'année change).
+        let next = InvoiceLocalStore.shared.nextInvoiceNumber()
         XCTAssertTrue(next.hasSuffix("00002"),
                      "Le compteur ne doit pas s'incrémenter sur le retry idempotent (attendu 00002, eu \(next))")
     }
