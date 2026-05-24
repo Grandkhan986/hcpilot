@@ -18,6 +18,10 @@ struct VitalsEntryView: View {
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var vm: VitalsViewModel
+    /// P-17 — message du warning à afficher dans l'alert. `.help(...)` n'a
+    /// aucun effet sur iPhone, on passe par un Button + Alert pour rester
+    /// accessible (notamment VoiceOver).
+    @State private var helpMessage: String? = nil
 
     init(session: Session, onSaved: @escaping () -> Void) {
         self.session = session
@@ -36,6 +40,15 @@ struct VitalsEntryView: View {
                 vitalsSection(title: "Avant l'IV", binding: $vm.preVitals, id: "pre")
                 vitalsSection(title: "Pendant l'IV", binding: $vm.duringVitals, id: "during")
                 vitalsSection(title: "Après l'IV", binding: $vm.postVitals, id: "post")
+
+                if !vm.isPhysiologicallyValid {
+                    Section {
+                        Text("Valeurs hors plage physiologique. Vérifiez vos saisies avant d'enregistrer.")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("vitals.physioError")
+                    }
+                }
 
                 if let err = vm.errorMessage {
                     Section { Text(err).font(.caption).foregroundStyle(.red) }
@@ -67,7 +80,7 @@ struct VitalsEntryView: View {
                     }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
-                    .disabled(vm.isSaving)
+                    .disabled(vm.isSaving || !vm.isPhysiologicallyValid)
                     .accessibilityIdentifier("vitals.save")
                 }
             }
@@ -78,6 +91,11 @@ struct VitalsEntryView: View {
                     Button("Annuler") { dismiss() }
                         .accessibilityIdentifier("vitals.cancel")
                 }
+            }
+            .alert("Attention", isPresented: .constant(helpMessage != nil)) {
+                Button("OK") { helpMessage = nil }
+            } message: {
+                Text(helpMessage ?? "")
             }
         }
     }
@@ -167,10 +185,18 @@ struct VitalsEntryView: View {
                 .keyboardType(.numberPad)
                 .accessibilityIdentifier(identifier)
             Text(unit).foregroundStyle(.secondary).font(.caption)
+            // P-17 — `.help(...)` n'a aucun effet sur iPhone. On utilise un
+            // Button + alert pour rendre le warning accessible (touch + VoiceOver).
             if let w = warning {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                    .help(w)
+                Button {
+                    helpMessage = w
+                } label: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("vitals.warning.\(identifier)")
+                .accessibilityLabel("Avertissement : \(w)")
             }
         }
     }
@@ -250,6 +276,36 @@ final class VitalsViewModel: ObservableObject {
 
     private let session: Session
     private let api = APIService.shared
+
+    /// P-16 — Validation physiologique stricte : empêche l'enregistrement de
+    /// valeurs impossibles (saisie erronée évidente type "BP sys = 999",
+    /// "HR = 0", ou chaîne non-numérique). Différent des warnings cliniques
+    /// (hypertension, bradycardie...) qui sont info-only.
+    ///
+    /// Plages retenues volontairement larges pour ne pas bloquer un cas
+    /// limite réel :
+    /// - BP sys : 50–250 mmHg
+    /// - BP dia : 20–150 mmHg
+    /// - HR : 20–250 bpm
+    /// - SpO2 : 50–100 %
+    ///
+    /// Un champ vide est considéré valide (la nurse peut enregistrer un
+    /// timepoint partiel — par exemple seulement BP sans HR).
+    var isPhysiologicallyValid: Bool {
+        for reading in [preVitals, duringVitals, postVitals] {
+            if !Self.isFieldValid(reading.bpSystolic, range: 50...250) { return false }
+            if !Self.isFieldValid(reading.bpDiastolic, range: 20...150) { return false }
+            if !Self.isFieldValid(reading.heartRate, range: 20...250) { return false }
+            if !Self.isFieldValid(reading.spo2, range: 50...100) { return false }
+        }
+        return true
+    }
+
+    private static func isFieldValid(_ s: String, range: ClosedRange<Int>) -> Bool {
+        if s.isEmpty { return true }   // champ vide = OK (saisie partielle)
+        guard let v = Int(s) else { return false }   // non-numérique = invalide
+        return range.contains(v)
+    }
 
     init(session: Session) {
         self.session = session

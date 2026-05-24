@@ -94,4 +94,64 @@ final class VitalsEntryViewTests: XCTestCase {
         XCTAssertLessThan(50, 60)      // HR warning < 50
         XCTAssertLessThan(92, 95)      // SpO2 warning < 92
     }
+
+    // MARK: - P-16 — Validation physiologique stricte
+
+    private func vm(_ patch: (VitalsViewModel) -> Void) -> VitalsViewModel {
+        let v = VitalsViewModel(session: makeSession())
+        patch(v)
+        return v
+    }
+
+    func test_isPhysiologicallyValid_true_when_all_fields_empty() {
+        let v = vm { _ in }
+        XCTAssertTrue(v.isPhysiologicallyValid, "Tous champs vides → save partiel possible")
+    }
+
+    func test_isPhysiologicallyValid_true_for_realistic_values() {
+        let v = vm {
+            $0.preVitals.bpSystolic = "120"
+            $0.preVitals.bpDiastolic = "80"
+            $0.preVitals.heartRate = "72"
+            $0.preVitals.spo2 = "98"
+        }
+        XCTAssertTrue(v.isPhysiologicallyValid)
+    }
+
+    func test_isPhysiologicallyValid_true_for_abnormal_but_possible_values() {
+        // BP sys = 200 → warning clinique (hypertension) mais valide
+        // physiologiquement.
+        let v = vm { $0.duringVitals.bpSystolic = "200" }
+        XCTAssertTrue(v.isPhysiologicallyValid,
+                     "BP sys 200 = warning clinique mais pas bloquant pour save")
+    }
+
+    func test_isPhysiologicallyValid_false_for_impossible_bp_sys() {
+        let v = vm { $0.preVitals.bpSystolic = "999" }
+        XCTAssertFalse(v.isPhysiologicallyValid)
+    }
+
+    func test_isPhysiologicallyValid_false_for_zero_heart_rate() {
+        let v = vm { $0.postVitals.heartRate = "0" }
+        XCTAssertFalse(v.isPhysiologicallyValid)
+    }
+
+    func test_isPhysiologicallyValid_false_for_non_numeric_input() {
+        let v = vm { $0.preVitals.bpSystolic = "abc" }
+        XCTAssertFalse(v.isPhysiologicallyValid)
+    }
+
+    func test_isPhysiologicallyValid_false_for_spo2_above_100() {
+        let v = vm { $0.duringVitals.spo2 = "150" }
+        XCTAssertFalse(v.isPhysiologicallyValid)
+    }
+
+    func test_isPhysiologicallyValid_independent_per_timepoint() {
+        // pre OK, during invalide → invalide globalement
+        let v = vm {
+            $0.preVitals.bpSystolic = "120"
+            $0.duringVitals.heartRate = "999"
+        }
+        XCTAssertFalse(v.isPhysiologicallyValid)
+    }
 }
