@@ -602,7 +602,13 @@ class APIService {
 
     func getAuditLogs(entityType: String? = nil, limit: Int = 100) async throws -> [AuditLogEntry] {
         var path = "/audit_logs?limit=\(limit)"
-        if let t = entityType { path += "&entityType=\(t)" }
+        // L2-1 — query param backend = snake_case (entity_type). Le converter
+        // .convertToSnakeCase de l'encoder JSON ne s'applique PAS à l'URL,
+        // donc on doit l'écrire snake_case manuellement.
+        if let t = entityType {
+            let encoded = t.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? t
+            path += "&entity_type=\(encoded)"
+        }
         return try await get(path)
     }
 
