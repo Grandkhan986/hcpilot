@@ -19,6 +19,10 @@ struct Invoice: Identifiable, Hashable, Codable {
     let tipAmount: Double?
     let travelFeeAmount: Double?
     let total: Double
+    /// L2-2 — devise ISO 4217. Optionnelle pour rétro-compat avec les
+    /// payloads existants (backend mock + invoices déjà persistées sans
+    /// currency). `effectiveCurrency` retourne USD par défaut.
+    let currency: String?
     let items: [InvoiceItem]?
     let paymentMethod: PaymentMethod?
     let dueDate: Date
@@ -32,6 +36,11 @@ struct Invoice: Identifiable, Hashable, Codable {
     let createdAt: Date
     let updatedAt: Date?
 
+    /// L2-2 — devise effective. Stripe Connect (Sprint 4) exigera ce champ
+    /// par invoice ; en attendant on défaulte USD car la cible HCPilot
+    /// (nurses IV mobiles) est US-only.
+    var effectiveCurrency: String { currency ?? "USD" }
+
     enum InvoiceStatus: String, CaseIterable, Codable {
         case draft
         case sent
@@ -40,6 +49,21 @@ struct Invoice: Identifiable, Hashable, Codable {
         case refunded
         case partialRefund = "partial_refund"
         case cancelled
+
+        /// L2-25 — Mapping vers les statuts Stripe Invoice (Sprint 4 prep).
+        /// Stripe Invoice statuses : draft, open, paid, void, uncollectible.
+        /// `refunded` / `partialRefund` n'ont pas d'équivalent direct au
+        /// niveau Stripe Invoice (les remboursements vivent sur le PaymentIntent),
+        /// on les mappe sur `paid` côté Stripe + on garde le détail localement.
+        var stripeStatus: String {
+            switch self {
+            case .draft: return "draft"
+            case .sent: return "open"
+            case .paid, .refunded, .partialRefund: return "paid"
+            case .overdue: return "uncollectible"
+            case .cancelled: return "void"
+            }
+        }
     }
 
     /// Modes de paiement supportés par Stripe Connect Express + saisie cash
@@ -63,10 +87,32 @@ struct Invoice: Identifiable, Hashable, Codable {
 }
 
 struct InvoiceItem: Identifiable, Hashable, Codable {
-    var id: String { "\(description)-\(quantity)" }
+    /// L2-14 — id UUID stable. Avant : synthétique `"\(description)-\(quantity)"`
+    /// → deux items identiques (deux "Vitamin C × 1") collisionnaient l'id et
+    /// SwiftUI ForEach loguait un warning + état UI partagé.
+    let id: String
     let description: String
     let quantity: Int
     let price: Double
+
+    init(id: String = UUID().uuidString, description: String, quantity: Int, price: Double) {
+        self.id = id
+        self.description = description
+        self.quantity = quantity
+        self.price = price
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, description, quantity, price }
+
+    /// Décode tolérant : `id` absent → UUID généré (rétrocompat avec payloads
+    /// historiques qui n'avaient pas d'id).
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = (try? c.decode(String.self, forKey: .id)) ?? UUID().uuidString
+        self.description = try c.decode(String.self, forKey: .description)
+        self.quantity = try c.decode(Int.self, forKey: .quantity)
+        self.price = try c.decode(Double.self, forKey: .price)
+    }
 }
 
 // MARK: - PaymentMethod helpers

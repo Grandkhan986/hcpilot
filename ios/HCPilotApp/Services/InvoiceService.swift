@@ -86,6 +86,7 @@ final class InvoiceService {
             tipAmount: tip > 0 ? tip : nil,
             travelFeeAmount: travelFee > 0 ? travelFee : nil,
             total: total,
+            currency: "USD",
             items: [
                 InvoiceItem(description: session.formulationName, quantity: 1, price: subtotal)
             ],

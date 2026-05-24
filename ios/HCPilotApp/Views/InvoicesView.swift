@@ -312,6 +312,7 @@ struct NewInvoiceView: View {
             tipAmount: nil,
             travelFeeAmount: nil,
             total: price * Double(quantity),
+            currency: "USD",
             items: [item],
             paymentMethod: nil,
             dueDate: Date(),
