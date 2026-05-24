@@ -349,12 +349,23 @@ final class APIService {
 
     @discardableResult
     private func intercept(_ error: Error) -> Error {
-        guard statusCode(from: error) == 401 else { return error }
-        // Token rejeté serveur → purge locale immédiate et notification.
-        // Sync clearToken (touche le Keychain) puis broadcast.
-        clearToken()
-        NotificationCenter.default.post(name: .hcpilotSessionUnauthorized, object: nil)
-        return APIError.unauthorized
+        // L2-8 — Wrapping des 4xx/5xx en APIError typés pour que l'UI puisse
+        // afficher des messages user-friendly au lieu d'`AFError` opaques.
+        guard let code = statusCode(from: error) else { return error }
+        switch code {
+        case 401:
+            // Token rejeté serveur → purge locale immédiate et notification.
+            clearToken()
+            NotificationCenter.default.post(name: .hcpilotSessionUnauthorized, object: nil)
+            return APIError.unauthorized
+        case 403: return APIError.forbidden
+        case 404: return APIError.notFound
+        case 409: return APIError.conflict
+        case 422: return APIError.validationFailed
+        case 429: return APIError.rateLimited
+        case 500...599: return APIError.serverError(status: code)
+        default: return error
+        }
     }
 
     /// POST sans body (action) avec mise en queue offline. Renvoie le JSON
@@ -440,6 +451,11 @@ final class APIService {
             if isNetworkError(error) {
                 throw MutationReplayError.networkUnavailable
             }
+            // L2-18 — 401 pendant un replay = token expiré côté serveur.
+            // intercept() purge la session locale + notification. La mutation
+            // est droppée (permanentFailure) car l'identité a changé : on ne
+            // rejoue pas avec un autre user.
+            _ = intercept(error)
             // 4xx/5xx → mutation périmée, on drop (last-write-wins per brief)
             throw MutationReplayError.permanentFailure
         }
@@ -682,8 +698,9 @@ final class APIService {
 
     func getConsentPDF(consentId: String) async throws -> Data {
         let resp: ConsentPDFResponse = try await get("/consents/\(consentId)/pdf")
+        // L2-23 — erreur typée au lieu d'`invalidResponse` vague.
         guard let data = Data(base64Encoded: resp.pdfB64) else {
-            throw APIError.invalidResponse
+            throw APIError.base64DecodingFailed(field: "consent.pdf_b64")
         }
         return data
     }
@@ -709,12 +726,26 @@ enum APIError: LocalizedError {
     case invalidURL(String)
     case invalidResponse
     case unauthorized
+    case forbidden
+    case notFound
+    case conflict
+    case validationFailed
+    case rateLimited
+    case serverError(status: Int)
+    case base64DecodingFailed(field: String)
 
     var errorDescription: String? {
         switch self {
         case .invalidURL(let endpoint): return "URL invalide: \(endpoint)"
         case .invalidResponse: return "Réponse invalide du serveur"
         case .unauthorized: return "Session expirée, veuillez vous reconnecter"
+        case .forbidden: return "Accès refusé"
+        case .notFound: return "Ressource introuvable"
+        case .conflict: return "Conflit : la donnée existe déjà ou a déjà été modifiée"
+        case .validationFailed: return "Données invalides — vérifiez votre saisie"
+        case .rateLimited: return "Trop de requêtes — réessayez dans un instant"
+        case .serverError(let status): return "Erreur serveur (\(status))"
+        case .base64DecodingFailed(let field): return "Impossible de décoder \(field) (base64 corrompu)"
         }
     }
 }
