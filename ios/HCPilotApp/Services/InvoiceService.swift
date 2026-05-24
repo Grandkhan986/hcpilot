@@ -47,6 +47,11 @@ final class InvoiceService {
         let tax = 0.0
         let total = subtotal + travelFee + tip + tax
 
+        // P-14 — paymentMethod passe par l'enum (stub = .cash en attendant
+        // Stripe Sprint 4). Le PDF utilise displayName pour éviter les
+        // strings hardcodées qui divergent du model Invoice.
+        let paymentMethod: Invoice.PaymentMethod = .cash
+
         let pdfInput = InvoicePDFBuilder.Input(
             invoiceNumber: invoiceNumber,
             invoiceDate: Date(),
@@ -62,7 +67,7 @@ final class InvoiceService {
             tip: tip,
             tax: tax,
             total: total,
-            paymentMethod: "Cash"  // Stub : pas de Stripe encore
+            paymentMethod: paymentMethod.displayName
         )
 
         let pdfData = InvoicePDFBuilder.build(pdfInput)
@@ -84,7 +89,7 @@ final class InvoiceService {
             items: [
                 InvoiceItem(description: session.formulationName, quantity: 1, price: subtotal)
             ],
-            paymentMethod: .cash,
+            paymentMethod: paymentMethod,
             dueDate: Date(),
             paidAt: nil,
             refundedAt: nil,

@@ -68,3 +68,21 @@ struct InvoiceItem: Identifiable, Hashable, Codable {
     let quantity: Int
     let price: Double
 }
+
+// MARK: - PaymentMethod helpers
+
+extension Invoice.PaymentMethod {
+    /// P-14 — Libellé d'affichage pour le PDF de facture et toute UI exposant
+    /// le mode de paiement à la nurse / au client. Centralise les chaînes
+    /// pour éviter les divergences (typos, casse) entre PDF, écran et serveur.
+    var displayName: String {
+        switch self {
+        case .card: return "Card"
+        case .applePay: return "Apple Pay"
+        case .googlePay: return "Google Pay"
+        case .ach: return "ACH"
+        case .cash: return "Cash"
+        case .other: return "Other"
+        }
+    }
+}

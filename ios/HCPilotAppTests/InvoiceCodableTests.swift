@@ -85,6 +85,23 @@ final class InvoiceCodableTests: XCTestCase {
         XCTAssertEqual(invoice.paymentMethod, .card)
     }
 
+    // MARK: - P-14 — PaymentMethod displayName
+
+    func test_payment_method_displayName_non_empty_for_all_cases() {
+        for m in Invoice.PaymentMethod.allCases {
+            XCTAssertFalse(m.displayName.isEmpty,
+                          "displayName doit être non vide pour \(m)")
+        }
+    }
+
+    func test_payment_method_displayName_cash() {
+        XCTAssertEqual(Invoice.PaymentMethod.cash.displayName, "Cash")
+    }
+
+    func test_payment_method_displayName_apple_pay() {
+        XCTAssertEqual(Invoice.PaymentMethod.applePay.displayName, "Apple Pay")
+    }
+
     func test_payment_method_serializes_snake_case() throws {
         // Verifies the .applePay case round-trips as "apple_pay" via the
         // explicit rawValue mapping (not the encoder strategy, which only
