@@ -455,3 +455,44 @@ d'origine, fichier(s) concerné(s), et la décision attendue côté fondateur.
 | MOYENNE | 5 (M-11 à M-15) | 3 h 30 |
 | BASSE | 3 (B-16 à B-18) | 1 h 30 |
 | **Total** | **9** | **~7–10 h** |
+
+---
+
+## Lot 1 audit — Issues différées (mai 2026)
+
+Audit Lot 1 (6 fichiers de la mission 4 critiques déférées) — 6/23 issues
+traitées immédiatement (P-12, P-16, P-17, P-8, P-14, P-4 — cf.
+`audit-lot1-patch-rapport.md`). 17 restantes différées :
+
+### Moyennes
+
+- [ ] **P-1** OnboardingState : race condition possible si `evaluate()` annule un `markComplete()` récent. Ajouter une protection 30 s. (~30 min)
+- [ ] **P-5** InvoicePDFBuilder : footer right potentiellement coupé en bas de page (texte long de practiceName). (~15 min)
+- [ ] **P-9** InvoiceLocalStore : reconsidérer `.completeFileProtection` (au lieu de `afterFirstUserAuthentication`) pour HIPAA strict — données PHI inaccessibles écran verrouillé. (~30 min + tests)
+- [ ] **P-13** InvoiceService : remplacer le préfixe `"stub-"` dans les invoice IDs par `"inv-"` ou un format aligné Stripe Sprint 4. (~10 min)
+- [ ] **P-18** VitalsEntryView : check cohérence temporelle pre < during < post (warning si l'ordre est incohérent). (~20 min)
+
+### Basses
+
+- [ ] **P-2** OnboardingState : catch silencieux (errors ignorées dans evaluate)
+- [ ] **P-3** OnboardingState : pas de logging des transitions d'état
+- [ ] **P-6** InvoicePDFBuilder : pas de localisation (FR hardcodé) — bloquant si on passe à l'EN
+- [ ] **P-7** InvoicePDFBuilder : devise EUR hardcodée — bloquant pour US (USD)
+- [ ] **P-10** InvoiceLocalStore : pas de purge des PDFs orphelins (invoiceId supprimé mais PDF resté sur disque)
+- [ ] **P-11** InvoiceLocalStore : pas de migration de schema (si on change le format de la map UserDefaults)
+- [ ] **P-15** InvoiceService : `clientFullName ?? session.clientName ?? "Client"` — fallback "Client" anonyme un peu pauvre
+- [ ] **P-19** VitalsEntryView : pas de keyboard.done pour fermer (la nurse doit tap ailleurs)
+- [ ] **P-20** VitalsEntryView : pas d'unité affichée dans le placeholder (juste "120" pas "120 mmHg")
+- [ ] **P-21** MedicalDirectorEditView : pas de validation NPI format (10 digits + Luhn check)
+- [ ] **P-22** MedicalDirectorEditView : pas d'undo si on annule par erreur après modification
+- [ ] **P-23** MedicalDirectorEditView : pas de feedback de save (juste dismiss)
+
+### Synthèse Lot 1
+
+| Sév | Items traités | Items différés | Effort différé estimé |
+|---|---|---|---|
+| CRITIQUE | 1 (P-12) | 0 | — |
+| MOYENNE | 3 (P-16, P-17, P-8) | 5 | ~2 h |
+| BAS-MOYEN | 2 (P-14, P-4) | 0 | — |
+| BASSE | 0 | 12 | ~3 h |
+| **Total** | **6** | **17** | **~5 h** |

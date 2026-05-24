@@ -141,3 +141,31 @@ Sur 10 parcours critiques audités, **~48 issues** (dont 5/6 CRITIQUE) ont été
 - Offline robuste (création client queueable, dédoublonnage).
 
 Les 4 items critiques restants (**C-62 vitals, C-63 invoice, C-01 first-launch, H-104 MD editor**) sont identifiés et estimés. Aucun ne bloque l'expérience d'une démo ; tous bloquent une vraie utilisation production par une nurse réelle.
+
+---
+
+## Addendum Lot 1 — Audit des 6 fichiers post-mission 4 critiques (mai 2026)
+
+Suite à la mission "4 critiques déférées", un audit Lot 1 a été réalisé sur les 6 fichiers nouveaux ou très modifiés :
+
+- `ios/HCPilotApp/Utils/OnboardingState.swift`
+- `ios/HCPilotApp/Utils/InvoicePDFBuilder.swift`
+- `ios/HCPilotApp/Utils/InvoiceLocalStore.swift`
+- `ios/HCPilotApp/Services/InvoiceService.swift`
+- `ios/HCPilotApp/Views/VitalsEntryView.swift`
+- `ios/HCPilotApp/Views/MedicalDirectorEditView.swift`
+
+**23 issues identifiées**, **6 traitées immédiatement** (1 CRITIQUE, 3 MOYENNES, 2 BAS-MOYEN), **17 différées** dans [`TODO-improvements.md`](TODO-improvements.md).
+
+| Issue | Sévérité | Statut | Commit |
+|---|---|---|---|
+| P-12 — InvoiceService idempotent | CRITIQUE | ✅ Résolu | `f5144929` |
+| P-16 — VitalsEntryView validation physiologique | MOYENNE | ✅ Résolu | `35072043` |
+| P-17 — VitalsEntryView warnings accessibles (alert) | MOYENNE | ✅ Résolu | `35072043` |
+| P-8 — Reset annuel compteur invoice | MOYENNE | ✅ Résolu | `57b5bb46` |
+| P-14 — PaymentMethod enum + displayName | BAS-MOYEN | ✅ Résolu | `8d494aa5` |
+| P-4 — InvoicePDFBuilder doc alignment (single-page) | BAS-MOYEN | ✅ Résolu | `c2ca44ea` |
+
+**Rapport complet de cette série** : [`../audit-lot1-patch-rapport.md`](../audit-lot1-patch-rapport.md).
+
+**15 nouveaux tests unitaires verts** (5 InvoiceServiceIdempotenceTests, 7 VitalsEntryViewTests P-16, 2 InvoicePDFBuilderTests P-8, 3 InvoiceCodableTests P-14).
