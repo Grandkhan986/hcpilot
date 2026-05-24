@@ -1,0 +1,68 @@
+name: iOS CI
+
+on:
+  push:
+    branches: [main]
+    paths: [ios/**, Package.swift, Package.resolved, .github/workflows/ios.yml]
+  pull_request:
+    branches: [main]
+    paths: [ios/**, Package.swift, Package.resolved, .github/workflows/ios.yml]
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    timeout-minutes: 25
+
+    env:
+      DESTINATION: "platform=iOS Simulator,name=iPhone 17,OS=latest"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.app
+
+      - name: Show environment
+        run: |
+          xcodebuild -version
+          swift --version
+          xcrun simctl list runtimes
+          xcrun simctl list devices available iPhone | head -30
+
+      - name: Cache Swift Package dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+            ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-${{ hashFiles('ios/HCPilot.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: ${{ runner.os }}-spm-
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project ios/HCPilot.xcodeproj \
+            -scheme HCPilotApp \
+            -destination "$DESTINATION" \
+            -configuration Debug \
+            -skipPackagePluginValidation \
+            build | xcpretty
+
+      - name: Unit tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project ios/HCPilot.xcodeproj \
+            -scheme HCPilotApp \
+            -destination "$DESTINATION" \
+            -only-testing:HCPilotAppTests \
+            -resultBundlePath TestResults.xcresult \
+            | xcpretty
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult
+          path: TestResults.xcresult
