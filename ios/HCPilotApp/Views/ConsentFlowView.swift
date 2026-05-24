@@ -292,6 +292,9 @@ private struct SignatureStep: View {
     /// re-render SwiftUI. On utilise ce flag comme tripwire pour ré-évaluer
     /// `isSignatureUsable` côté disable du Confirm.
     @State private var debugSignatureInjected = false
+    /// Tripwire user réel : bumpé par le delegate à chaque trait pour forcer
+    /// SwiftUI à re-évaluer `.disabled` après que le client a signé au doigt.
+    @State private var drawingTick = 0
 
     /// Fork A Lot 1 / UI-T3 : XCUI ne sait pas dessiner sur PKCanvasView.
     /// En présence du launch argument `-uitest`, on affiche un bouton de
@@ -331,7 +334,7 @@ private struct SignatureStep: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
 
-            SignaturePad(canvasView: $canvasView)
+            SignaturePad(canvasView: $canvasView, drawingTick: $drawingTick)
                 .frame(height: 220)
                 .background(Color.white)
                 .overlay(
@@ -342,7 +345,11 @@ private struct SignatureStep: View {
                 .accessibilityIdentifier("consent.signature.canvas")
 
             HStack {
-                Button("Effacer") { canvasView.drawing = PKDrawing() }
+                Button("Effacer") {
+                    canvasView.drawing = PKDrawing()
+                    drawingTick &+= 1
+                    debugSignatureInjected = false
+                }
                     .buttonStyle(.bordered)
                     .accessibilityIdentifier("consent.signature.clear")
                 Spacer()
@@ -357,7 +364,7 @@ private struct SignatureStep: View {
                     // pour éviter qu'un point microscopique soit accepté.
                     // 40×20 pt = au moins un trait court (5-6 caractères de
                     // signature, ou un paraphe).
-                    .disabled(!isSignatureUsable(canvasView.drawing) && !debugSignatureInjected)
+                    .disabled({ _ = drawingTick; return !isSignatureUsable(canvasView.drawing) && !debugSignatureInjected }())
                     .accessibilityIdentifier("consent.signature.confirm")
                 }
             }
@@ -395,15 +402,27 @@ private struct SignatureStep: View {
 
 private struct SignaturePad: UIViewRepresentable {
     @Binding var canvasView: PKCanvasView
+    @Binding var drawingTick: Int
 
     func makeUIView(context: Context) -> PKCanvasView {
         canvasView.tool = PKInkingTool(.pen, color: .black, width: 3)
         canvasView.drawingPolicy = .anyInput
         canvasView.backgroundColor = .white
+        canvasView.delegate = context.coordinator
         return canvasView
     }
 
     func updateUIView(_ uiView: PKCanvasView, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(tick: $drawingTick) }
+
+    final class Coordinator: NSObject, PKCanvasViewDelegate {
+        let tick: Binding<Int>
+        init(tick: Binding<Int>) { self.tick = tick }
+        func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
+            tick.wrappedValue &+= 1
+        }
+    }
 }
 
 // MARK: - Progress dots
@@ -499,8 +518,11 @@ final class ConsentFlowViewModel: ObservableObject {
         isSubmitting = true
         defer { isSubmitting = false }
 
-        // Capture signature en PNG
-        let renderBounds = canvas.bounds.isEmpty ? drawingBounds : canvas.bounds
+        // Capture signature en PNG — on cadre sur le drawing lui-même (avec un
+        // petit padding pour ne pas couper les traits) plutôt que sur canvas.bounds.
+        // Sinon le tracé (~40×20pt) noyé dans un canvas 363×220 devient un
+        // micropoint illisible une fois le PDF réduit à 165×100pt.
+        let renderBounds = drawingBounds.insetBy(dx: -8, dy: -8)
         let signatureUIImage = canvas.drawing.image(from: renderBounds, scale: 2.0)
         guard let signaturePNG = signatureUIImage.pngData() else {
             errorMessage = "Impossible de capturer la signature."

@@ -12,6 +12,15 @@ struct ConsentCheckpoint: Codable, Hashable, Identifiable {
         self.label = label
         self.accepted = accepted
     }
+
+    private enum CodingKeys: String, CodingKey { case id, label, accepted }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = (try? c.decode(String.self, forKey: .id)) ?? UUID().uuidString
+        self.label = try c.decode(String.self, forKey: .label)
+        self.accepted = try c.decode(Bool.self, forKey: .accepted)
+    }
 }
 
 /// Métadonnées d'un consentement signé. Brief `consents`.

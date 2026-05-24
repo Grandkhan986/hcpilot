@@ -157,14 +157,12 @@ struct SessionDetailView: View {
     @State private var showConsentFlow = false
     @State private var consent: ConsentSummary?
     @State private var consentLoading = true
-    @State private var pdfData: Data?
-    @State private var showPDF = false
+    @State private var consentPDFItem: PDFSheetItem?
     @State private var showLotUsageSheet = false
     @EnvironmentObject var authViewModel: AuthViewModel
     // C-63 — invoice générée à la complétion de la session
     @State private var generatedInvoice: Invoice?
-    @State private var invoicePdfData: Data?
-    @State private var showInvoicePDF = false
+    @State private var invoicePDFItem: PDFSheetItem?
     // C-62 — saisie des vitals
     @State private var showVitalsEntry = false
 
@@ -295,8 +293,9 @@ struct SessionDetailView: View {
                     // complétée et qu'une invoice a été générée.
                     if session.status == .completed, let invoice = generatedInvoice {
                         Button {
-                            invoicePdfData = InvoiceLocalStore.shared.loadPDF(forInvoiceId: invoice.id)
-                            showInvoicePDF = invoicePdfData != nil
+                            if let data = InvoiceLocalStore.shared.loadPDF(forInvoiceId: invoice.id) {
+                                invoicePDFItem = PDFSheetItem(data: data)
+                            }
                         } label: {
                             HStack {
                                 Image(systemName: "doc.richtext")
@@ -315,10 +314,8 @@ struct SessionDetailView: View {
             }
             .padding()
         }
-        .sheet(isPresented: $showInvoicePDF) {
-            if let data = invoicePdfData {
-                PDFPreviewView(data: data)
-            }
+        .sheet(item: $invoicePDFItem) { item in
+            PDFPreviewView(data: item.data)
         }
         .sheet(isPresented: $showVitalsEntry) {
             VitalsEntryView(session: session) { onAction() }
@@ -354,10 +351,8 @@ struct SessionDetailView: View {
                 onAction()
             }
         }
-        .sheet(isPresented: $showPDF) {
-            if let data = pdfData {
-                PDFPreviewView(data: data)
-            }
+        .sheet(item: $consentPDFItem) { item in
+            PDFPreviewView(data: item.data)
         }
         .sheet(isPresented: $showLotUsageSheet) {
             LotUsageSheet(
@@ -474,8 +469,8 @@ struct SessionDetailView: View {
 
     private func openPDF(consentId: String) async {
         do {
-            pdfData = try await APIService.shared.getConsentPDF(consentId: consentId)
-            showPDF = true
+            let data = try await APIService.shared.getConsentPDF(consentId: consentId)
+            consentPDFItem = PDFSheetItem(data: data)
         } catch {
             print("Erreur PDF: \(error)")
         }
@@ -528,7 +523,9 @@ struct SessionDetailView: View {
             )
             generatedInvoice = invoice
             // Charge le PDF local pour l'aperçu immédiat.
-            invoicePdfData = InvoiceLocalStore.shared.loadPDF(forInvoiceId: invoice.id)
+            if let data = InvoiceLocalStore.shared.loadPDF(forInvoiceId: invoice.id) {
+                invoicePDFItem = PDFSheetItem(data: data)
+            }
         } catch {
             // Stub : log seulement. La complétion de session reste valide.
             print("Erreur génération invoice : \(error.localizedDescription)")
@@ -767,6 +764,15 @@ struct NewSessionView: View {
 }
 
 import PDFKit
+
+/// Wrapper Identifiable pour `.sheet(item:)`. Évite le bug "page blanche"
+/// qu'on a quand on couple `.sheet(isPresented:)` + `if let optional` :
+/// si la closure est évaluée avant que l'état soit propagé, on a un sheet vide
+/// et SwiftUI ne ré-évalue pas la closure quand la donnée arrive.
+struct PDFSheetItem: Identifiable {
+    let id = UUID()
+    let data: Data
+}
 
 /// Visualiseur PDF natif (PDFKit) avec bouton share intégré.
 struct PDFPreviewView: View {
