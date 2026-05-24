@@ -1,7 +1,7 @@
 import Foundation
 import Alamofire
 
-class APIService {
+final class APIService {
     static let shared = APIService()
 
     // Audit H14 : versionning d'API. Préfixe `/v1` côté client pour permettre
@@ -13,7 +13,18 @@ class APIService {
     private let baseURL = "https://api.hcpilot.com/v1"
     #endif
 
-    private var authToken: String?
+    /// L2-3 — Accès sérialisé à `authToken`. Sans ce verrou, plusieurs requêtes
+    /// concurrentes pouvaient lire un token mid-write (clearToken pendant qu'une
+    /// autre construit `headers`). Petit coût (lock léger) acceptable face au
+    /// risque de bug intermittent en prod.
+    private let tokenLock = NSLock()
+    private var _authToken: String?
+
+    private var authToken: String? {
+        tokenLock.lock()
+        defer { tokenLock.unlock() }
+        return _authToken
+    }
 
     private var headers: HTTPHeaders {
         var h = HTTPHeaders()
@@ -127,19 +138,23 @@ class APIService {
     private init() {
         // Restaure le token depuis le Keychain au boot (session persistante
         // sauf si expirée par inactivité — l'AuthViewModel s'en charge).
-        self.authToken = SecureStorage.shared.getString(forKey: .authToken)
+        self._authToken = SecureStorage.shared.getString(forKey: .authToken)
     }
 
     // MARK: - Auth Token Management
 
     func setToken(_ token: String) {
-        authToken = token
+        tokenLock.lock()
+        _authToken = token
+        tokenLock.unlock()
         SecureStorage.shared.setString(token, forKey: .authToken)
         SecureStorage.shared.setDate(Date(), forKey: .lastActivity)
     }
 
     func clearToken() {
-        authToken = nil
+        tokenLock.lock()
+        _authToken = nil
+        tokenLock.unlock()
         SecureStorage.shared.clearSession()
     }
 
