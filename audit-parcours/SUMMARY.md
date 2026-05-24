@@ -169,3 +169,29 @@ Suite à la mission "4 critiques déférées", un audit Lot 1 a été réalisé 
 **Rapport complet de cette série** : [`../audit-lot1-patch-rapport.md`](../audit-lot1-patch-rapport.md).
 
 **15 nouveaux tests unitaires verts** (5 InvoiceServiceIdempotenceTests, 7 VitalsEntryViewTests P-16, 2 InvoicePDFBuilderTests P-8, 3 InvoiceCodableTests P-14).
+
+---
+
+## Addendum Lot 2 — Audit des 5 fichiers core (mai 2026)
+
+Suite à l'addendum Lot 1, audit Lot 2 sur les fichiers core :
+
+- `ios/HCPilotApp/Services/APIService.swift`
+- `ios/HCPilotApp/Utils/ConsentPDFBuilder.swift`
+- `ios/HCPilotApp/Models/Client.swift`
+- `ios/HCPilotApp/Models/Session.swift`
+- `ios/HCPilotApp/Models/Invoice.swift`
+
+**42 issues identifiées**, **31 traitées** (74 %) — 1 CRITIQUE, 3 HAUTE, 8 MOYENNE, 8 BAS-MOYEN, 11 BAS. **11 différées** (dont 4 nécessitent coordination backend).
+
+| Issue | Sévérité | Statut | Commit |
+|---|---|---|---|
+| L2-1 — Filtre /audit_logs snake_case | CRITIQUE | ✅ | `a50bfd97` |
+| L2-2 — Invoice.currency | HAUTE | ✅ | `9237bc41` |
+| L2-3 — authToken thread safety | HAUTE | ✅ | `f12ce38c` |
+| L2-4 — PHI device.name | HAUTE | ✅ | `ae38a6b2` |
+| L2-5 à L2-25 et L2-31 — 27 autres issues | MOY/BAS | ✅ | 6 autres commits |
+
+**Rapport complet** : [`../audit-lot2-patch-rapport.md`](../audit-lot2-patch-rapport.md).
+
+**+13 tests unitaires verts** (currency / Stripe status / InvoiceItem id / Vitals struct / countPages short).

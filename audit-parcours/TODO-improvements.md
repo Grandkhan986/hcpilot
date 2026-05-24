@@ -496,3 +496,42 @@ traitées immédiatement (P-12, P-16, P-17, P-8, P-14, P-4 — cf.
 | BAS-MOYEN | 2 (P-14, P-4) | 0 | — |
 | BASSE | 0 | 12 | ~3 h |
 | **Total** | **6** | **17** | **~5 h** |
+
+---
+
+## Lot 2 audit — Issues différées (mai 2026)
+
+Audit Lot 2 (5 fichiers core : APIService, ConsentPDFBuilder, Client,
+Session, Invoice). 31/42 issues traitées (1 CRITIQUE, 3 HAUTE, 8 MOYENNE,
+8 BAS-MOYEN, 11 BAS — cf. `audit-lot2-patch-rapport.md`). 11 restantes.
+
+### Moyennes (3)
+
+- [ ] **L2-9 (partiel)** ConsentPDFBuilder.countPages divergeant du rendu réel sur multi-page (off de 1-2 pages). Tests XCTSkip en place. Fix demande refactor break logic partagé entre countPages et drawWrappedText. (~3-4 h)
+- [ ] **L2-12** Session.formulationName non typée. Décision **backend** : FK vers une table de formulations + check constraint. iOS reste String côté Model. (~2 h backend + migration)
+- [ ] **L2-15** Montants Invoice en Double → migrer vers Decimal pour précision comptable. Coordination **backend nécessaire** (changer JSON contract ou décoder strict). Sprint 4 Stripe alignment. (~4-6 h)
+- [ ] **L2-16** Session.clinicalNotes sans audit trail. Décision **backend** : table append-only de notes datées + endpoint dédié `/sessions/{id}/notes`. iOS lit la liste. (~3 h backend + UI)
+- [ ] **L2-17** Session.formulationInventoryId optionnel pour completed. Décision **backend** : check constraint `status='completed' implies formulation_inventory_id IS NOT NULL`. (~30 min backend)
+
+### Basses (8)
+
+- [ ] **L2-28** Client.idDocumentPath jamais set (dead field) — supprimer ou wire to Supabase Storage
+- [ ] **L2-29** allergies/conditions/medications sans codes ICD-10/RxNorm — Sprint 6+
+- [ ] **L2-30** Session.photosPaths sans timestamp/caption (juste paths) — UI dédiée Sprint 6+
+- [ ] **L2-32** InvoiceItem.description shadow CustomStringConvertible — rename éventuel itemDescription
+- [ ] **L2-33** APIService.replay bypass encoder — OK by design (body déjà encodé), documenter
+- [ ] **L2-34** headers.dictionary access in replay — minor style
+- [ ] **L2-35 à L2-42** divers code style (8 items très mineurs)
+
+### Synthèse Lot 2
+
+| Sév | Traités | Différés | Effort différé |
+|---|---|---|---|
+| CRITIQUE | 1 | 0 | — |
+| HAUTE | 3 | 0 | — |
+| MOYENNE | 8 | 5 | ~10-15 h (dont 5 backend) |
+| BAS-MOYEN | 8 | 0 | — |
+| BAS | 11 | 8 | ~1-2 h |
+| **Total** | **31** | **13** | **~12-17 h** |
+
+**Note** : 5/13 différées sont des décisions backend (L2-12, L2-15, L2-16, L2-17, et la coordination L2-15 Decimal). iOS ne peut pas les fixer seul.
