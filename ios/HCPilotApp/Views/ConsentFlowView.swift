@@ -534,11 +534,17 @@ final class ConsentFlowViewModel: ObservableObject {
         let coord = await location.requestOneShot()
 
         // Device info
+        // L2-4 — `UIDevice.current.name` est "iPhone de Marie Dupont" sur la
+        // plupart des configs : ça fait fuiter du PHI (nom du soignant) dans
+        // deviceInfo qui est ensuite stocké en clair côté serveur ET rendu
+        // dans le PDF de consentement. On préfère un identifiant stable et
+        // non-PHI : `identifierForVendor` (UUID propre à l'app/vendor, stable
+        // pour la nurse mais ne révèle pas son identité).
         let device = UIDevice.current
         let deviceInfo: [String: String] = [
             "model": device.model,
             "system": "\(device.systemName) \(device.systemVersion)",
-            "name": device.name,
+            "device_id": device.identifierForVendor?.uuidString ?? "unknown",
         ]
 
         // Construit le PDF
