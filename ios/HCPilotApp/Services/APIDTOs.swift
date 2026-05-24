@@ -31,9 +31,9 @@ extension APIService {
         var totalAmount: Double?
         var ivStartTime: Date?
         var ivEndTime: Date?
-        var preVitals: [String: String]?
-        var duringVitals: [String: String]?
-        var postVitals: [String: String]?
+        var preVitals: Vitals?
+        var duringVitals: Vitals?
+        var postVitals: Vitals?
         var dripRate: String?
         var cancellationReason: String?
     }

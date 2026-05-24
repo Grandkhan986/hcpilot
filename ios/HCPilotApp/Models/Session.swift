@@ -1,5 +1,67 @@
 import Foundation
 
+/// L2-13 — Vitals typés (BP/HR/SpO2 en Int) plutôt qu'un dict opaque
+/// `[String: String]`. Custom Codable pour rester compatible avec le
+/// backend qui stocke encore les vitals comme JSONB dict snake_case.
+struct Vitals: Codable, Equatable {
+    var bpSystolic: Int?
+    var bpDiastolic: Int?
+    var heartRate: Int?
+    var spo2: Int?
+    var notes: String?
+    var capturedAt: Date?
+
+    init(bpSystolic: Int? = nil, bpDiastolic: Int? = nil, heartRate: Int? = nil,
+         spo2: Int? = nil, notes: String? = nil, capturedAt: Date? = nil) {
+        self.bpSystolic = bpSystolic
+        self.bpDiastolic = bpDiastolic
+        self.heartRate = heartRate
+        self.spo2 = spo2
+        self.notes = notes
+        self.capturedAt = capturedAt
+    }
+
+    init(dict: [String: String]) {
+        self.bpSystolic = dict["bp_systolic"].flatMap(Int.init)
+        self.bpDiastolic = dict["bp_diastolic"].flatMap(Int.init)
+        self.heartRate = dict["heart_rate"].flatMap(Int.init)
+        self.spo2 = dict["spo2"].flatMap(Int.init)
+        self.notes = dict["notes"]
+        if let ts = dict["captured_at"] {
+            self.capturedAt = ISO8601DateFormatter().date(from: ts)
+        }
+    }
+
+    var asDict: [String: String] {
+        var dict: [String: String] = [:]
+        if let v = bpSystolic { dict["bp_systolic"] = "\(v)" }
+        if let v = bpDiastolic { dict["bp_diastolic"] = "\(v)" }
+        if let v = heartRate { dict["heart_rate"] = "\(v)" }
+        if let v = spo2 { dict["spo2"] = "\(v)" }
+        if let n = notes, !n.isEmpty { dict["notes"] = n }
+        if let t = capturedAt {
+            dict["captured_at"] = ISO8601DateFormatter().string(from: t)
+        }
+        return dict
+    }
+
+    var isEmpty: Bool {
+        bpSystolic == nil && bpDiastolic == nil && heartRate == nil && spo2 == nil
+            && (notes ?? "").isEmpty
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let dict = try container.decode([String: String].self)
+        self.init(dict: dict)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(asDict)
+    }
+}
+
 /// Une session IV : ce que la nurse effectue chez le client.
 /// Brief `sessions`. Modèle private pay — pas de copay/insurance.
 /// camelCase Swift / snake_case JSON via APIService global strategy.
@@ -24,10 +86,11 @@ struct Session: Identifiable, Codable, Equatable {
     // Heures effectives de la perfusion IV
     var ivStartTime: Date?
     var ivEndTime: Date?
-    // Vitals : jsonb libre `{"bp_sys": 120, "bp_dia": 80, "hr": 72, ...}`
-    var preVitals: [String: String]?
-    var duringVitals: [String: String]?
-    var postVitals: [String: String]?
+    // L2-13 — Vitals typés (Vitals struct) avec mapping bi-directionnel
+    // vers le dict snake_case stocké côté backend.
+    var preVitals: Vitals?
+    var duringVitals: Vitals?
+    var postVitals: Vitals?
     var dripRate: String?
     var clinicalNotes: String?
     var photosPaths: [String]

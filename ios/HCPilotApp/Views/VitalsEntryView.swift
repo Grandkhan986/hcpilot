@@ -266,6 +266,20 @@ final class VitalsViewModel: ObservableObject {
             }
             return dict
         }
+
+        /// L2-13 — Conversion vers la struct typée `Vitals` côté Model.
+        /// `nil` si la lecture est vide (saute le timepoint au save).
+        var asVitals: Vitals? {
+            guard !isEmpty else { return nil }
+            return Vitals(
+                bpSystolic: Int(bpSystolic),
+                bpDiastolic: Int(bpDiastolic),
+                heartRate: Int(heartRate),
+                spo2: Int(spo2),
+                notes: notes.isEmpty ? nil : notes,
+                capturedAt: capturedAt
+            )
+        }
     }
 
     @Published var preVitals = Reading()
@@ -310,9 +324,9 @@ final class VitalsViewModel: ObservableObject {
     init(session: Session) {
         self.session = session
         // Pré-remplit depuis les vitals existants si déjà saisis (édition).
-        if let pre = session.preVitals { preVitals = Self.readingFrom(dict: pre) }
-        if let dur = session.duringVitals { duringVitals = Self.readingFrom(dict: dur) }
-        if let post = session.postVitals { postVitals = Self.readingFrom(dict: post) }
+        if let pre = session.preVitals { preVitals = Self.readingFrom(vitals: pre) }
+        if let dur = session.duringVitals { duringVitals = Self.readingFrom(vitals: dur) }
+        if let post = session.postVitals { postVitals = Self.readingFrom(vitals: post) }
     }
 
     static let timeFmt: DateFormatter = {
@@ -323,16 +337,14 @@ final class VitalsViewModel: ObservableObject {
         return f
     }()
 
-    private static func readingFrom(dict: [String: String]) -> Reading {
+    private static func readingFrom(vitals: Vitals) -> Reading {
         var r = Reading()
-        r.bpSystolic = dict["bp_systolic"] ?? ""
-        r.bpDiastolic = dict["bp_diastolic"] ?? ""
-        r.heartRate = dict["heart_rate"] ?? ""
-        r.spo2 = dict["spo2"] ?? ""
-        r.notes = dict["notes"] ?? ""
-        if let ts = dict["captured_at"] {
-            r.capturedAt = ISO8601DateFormatter().date(from: ts)
-        }
+        r.bpSystolic = vitals.bpSystolic.map(String.init) ?? ""
+        r.bpDiastolic = vitals.bpDiastolic.map(String.init) ?? ""
+        r.heartRate = vitals.heartRate.map(String.init) ?? ""
+        r.spo2 = vitals.spo2.map(String.init) ?? ""
+        r.notes = vitals.notes ?? ""
+        r.capturedAt = vitals.capturedAt
         return r
     }
 
@@ -341,9 +353,9 @@ final class VitalsViewModel: ObservableObject {
         errorMessage = nil
         defer { isSaving = false }
         let patch = APIService.SessionPatch(
-            preVitals: preVitals.asDict,
-            duringVitals: duringVitals.asDict,
-            postVitals: postVitals.asDict
+            preVitals: preVitals.asVitals,
+            duringVitals: duringVitals.asVitals,
+            postVitals: postVitals.asVitals
         )
         do {
             _ = try await api.updateSession(id: session.id, patch: patch)

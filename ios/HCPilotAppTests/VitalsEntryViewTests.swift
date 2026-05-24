@@ -72,8 +72,8 @@ final class VitalsEntryViewTests: XCTestCase {
 
     func test_vm_prefills_from_session_existing_vitals() {
         var session = makeSession()
-        session.preVitals = ["bp_systolic": "110", "bp_diastolic": "70", "heart_rate": "68"]
-        session.postVitals = ["bp_systolic": "115", "heart_rate": "72"]
+        session.preVitals = Vitals(bpSystolic: 110, bpDiastolic: 70, heartRate: 68)
+        session.postVitals = Vitals(bpSystolic: 115, heartRate: 72)
 
         let vm = VitalsViewModel(session: session)
         XCTAssertEqual(vm.preVitals.bpSystolic, "110")
@@ -81,6 +81,56 @@ final class VitalsEntryViewTests: XCTestCase {
         XCTAssertEqual(vm.preVitals.heartRate, "68")
         XCTAssertEqual(vm.postVitals.bpSystolic, "115")
         XCTAssertEqual(vm.duringVitals.bpSystolic, "", "Pas de duringVitals → champ vide")
+    }
+
+    // MARK: - L2-13 — Vitals struct typée + Codable dict-based
+
+    func test_vitals_round_trip_via_dict() {
+        let original = Vitals(bpSystolic: 120, bpDiastolic: 80, heartRate: 72,
+                              spo2: 98, notes: "RAS",
+                              capturedAt: Date(timeIntervalSince1970: 1716393600))
+        let dict = original.asDict
+        XCTAssertEqual(dict["bp_systolic"], "120")
+        XCTAssertEqual(dict["heart_rate"], "72")
+        XCTAssertEqual(dict["spo2"], "98")
+        XCTAssertEqual(dict["notes"], "RAS")
+        XCTAssertNotNil(dict["captured_at"])
+
+        let rebuilt = Vitals(dict: dict)
+        XCTAssertEqual(rebuilt.bpSystolic, 120)
+        XCTAssertEqual(rebuilt.bpDiastolic, 80)
+        XCTAssertEqual(rebuilt.heartRate, 72)
+        XCTAssertEqual(rebuilt.spo2, 98)
+        XCTAssertEqual(rebuilt.notes, "RAS")
+    }
+
+    func test_vitals_empty_when_all_nil() {
+        XCTAssertTrue(Vitals().isEmpty)
+        XCTAssertFalse(Vitals(bpSystolic: 120).isEmpty)
+    }
+
+    func test_vitals_dict_skips_nil_fields() {
+        let v = Vitals(bpSystolic: 120)  // seul champ rempli
+        let dict = v.asDict
+        XCTAssertEqual(dict.count, 1)
+        XCTAssertEqual(dict["bp_systolic"], "120")
+        XCTAssertNil(dict["bp_diastolic"])
+    }
+
+    func test_reading_asVitals_empty_returns_nil() {
+        let r = VitalsViewModel.Reading()
+        XCTAssertNil(r.asVitals)
+    }
+
+    func test_reading_asVitals_partial() {
+        var r = VitalsViewModel.Reading()
+        r.bpSystolic = "120"
+        r.heartRate = "72"
+        let v = r.asVitals
+        XCTAssertNotNil(v)
+        XCTAssertEqual(v?.bpSystolic, 120)
+        XCTAssertEqual(v?.heartRate, 72)
+        XCTAssertNil(v?.spo2)
     }
 
     // MARK: - Validation warnings (testés via les fonctions privées de la View
