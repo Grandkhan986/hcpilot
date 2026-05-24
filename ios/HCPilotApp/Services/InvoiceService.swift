@@ -18,8 +18,9 @@ final class InvoiceService {
     private init() {}
 
     /// Génère et persiste une invoice pour une session terminée.
-    /// Idempotent : si la session a déjà une invoice (présence dans
-    /// l'historique local), retourne l'existante.
+    /// Idempotent (P-12) : si la session a déjà une invoice (rebuild possible
+    /// depuis InvoiceLocalStore), retourne l'existante sans incrémenter le
+    /// compteur de numéro ni régénérer le PDF.
     func generateInvoiceForCompletedSession(
         _ session: Session,
         practiceName: String?,
@@ -27,6 +28,13 @@ final class InvoiceService {
         clientFullName: String?,
         clientAddress: String?
     ) async throws -> Invoice {
+        // Idempotence (P-12) : court-circuit si une invoice existe déjà pour
+        // cette session. Évite les doublons de numéro et les incréments parasites
+        // du compteur lors d'un retry ou d'un double-tap.
+        if let existing = InvoiceLocalStore.shared.loadInvoice(forSession: session.id) {
+            return existing
+        }
+
         let invoiceNumber = InvoiceLocalStore.shared.nextInvoiceNumber()
         let invoiceId = "stub-\(UUID().uuidString.prefix(8))"
 
@@ -86,6 +94,11 @@ final class InvoiceService {
             createdAt: Date(),
             updatedAt: nil
         )
+
+        // Persiste l'invoice localement AVANT le POST backend pour garantir
+        // l'idempotence côté client même si le réseau échoue (le prochain appel
+        // pour cette session sera court-circuité).
+        InvoiceLocalStore.shared.recordInvoice(invoice, forSession: session.id)
 
         // POST backend — non-bloquant pour le PDF local (déjà créé).
         // En cas d'échec réseau, l'invoice reste dispo localement.

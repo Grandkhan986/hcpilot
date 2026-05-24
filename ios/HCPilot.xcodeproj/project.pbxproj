@@ -71,6 +71,7 @@
 		B7367566AC0644849EC0539D /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 28440EE95B0E4FF7B1706FE5 /* Kingfisher */; };
 		B8085430FAA70E35DA83DA4B /* HomeViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D58C9CB15485D3876A629ED /* HomeViewModelTests.swift */; };
 		B9025DB6D664DDD36273CA51 /* InvoicePDFBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFEB9C21131F70E189A3CD05 /* InvoicePDFBuilderTests.swift */; };
+		1F2E3D4C5B6A7988998877AA /* InvoiceServiceIdempotenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E1D2C3B4A5968778695A4B /* InvoiceServiceIdempotenceTests.swift */; };
 		B9581CBDEF3DBDF72A41C0D7 /* Compliance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 189C78AE179EC62DAF132416 /* Compliance.swift */; };
 		C11D2168B10E3895C774A863 /* OfflineCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A2135761FC6961DB184AA04 /* OfflineCacheTests.swift */; };
 		C4A1DC593CC7B106AFD5AF04 /* AddLotFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB39FC80B037368C4A32EA5D /* AddLotFlow.swift */; };
@@ -182,6 +183,7 @@
 		B69C58EBCD2ADA4C8F5B7F84 /* SecuritySettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecuritySettingsTests.swift; sourceTree = "<group>"; };
 		B8626ACF93B2719A1518FE61 /* LegalDocsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalDocsView.swift; sourceTree = "<group>"; };
 		BFEB9C21131F70E189A3CD05 /* InvoicePDFBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoicePDFBuilderTests.swift; sourceTree = "<group>"; };
+		F0E1D2C3B4A5968778695A4B /* InvoiceServiceIdempotenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceServiceIdempotenceTests.swift; sourceTree = "<group>"; };
 		C3E128DBA206FE219D527C71 /* ConsentSignatureUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsentSignatureUITests.swift; sourceTree = "<group>"; };
 		C6080AA0D95193A72BC50AE7 /* ConsentPDFBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsentPDFBuilder.swift; sourceTree = "<group>"; };
 		C79A43452DEB9E8540649179 /* InventoryLotUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryLotUITests.swift; sourceTree = "<group>"; };
@@ -311,6 +313,7 @@
 				9D58C9CB15485D3876A629ED /* HomeViewModelTests.swift */,
 				AD83D4FBEAB5C63DF7D0493B /* InvoiceCodableTests.swift */,
 				BFEB9C21131F70E189A3CD05 /* InvoicePDFBuilderTests.swift */,
+				F0E1D2C3B4A5968778695A4B /* InvoiceServiceIdempotenceTests.swift */,
 				A864B94E5343FF7BD9AFA59D /* MedicalDirectorEditViewTests.swift */,
 				8BEEF9E56C5EAB0F8AE21C8E /* MutationQueueDedupeTests.swift */,
 				76030F8E90BF2142A1ACE2F4 /* MutationQueueTests.swift */,
@@ -575,6 +578,7 @@
 				B8085430FAA70E35DA83DA4B /* HomeViewModelTests.swift in Sources */,
 				9BE73BFAF47590ACAFA9BD8E /* InvoiceCodableTests.swift in Sources */,
 				B9025DB6D664DDD36273CA51 /* InvoicePDFBuilderTests.swift in Sources */,
+				1F2E3D4C5B6A7988998877AA /* InvoiceServiceIdempotenceTests.swift in Sources */,
 				36560BB84BE078B7C9F5A01B /* MedicalDirectorEditViewTests.swift in Sources */,
 				8508DBFEF1D7D08A09F396FC /* MutationQueueDedupeTests.swift in Sources */,
 				89822B4E7B011EEACE8A76D4 /* MutationQueueTests.swift in Sources */,
