@@ -51,7 +51,7 @@ extension APIService {
         var email: String?
         var phone: String?
         var dateOfBirth: String?
-        var gender: String?
+        var gender: Gender?
         var addressLine1: String?
         var addressLine2: String?
         var city: String?

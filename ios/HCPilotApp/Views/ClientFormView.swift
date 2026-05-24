@@ -26,7 +26,7 @@ struct ClientFormView: View {
     @State private var email: String = ""
     @State private var phone: String = ""
     @State private var dateOfBirth: Date? = nil
-    @State private var gender: String = ""
+    @State private var gender: Gender? = nil
     // Adresse splittée
     @State private var addressLine1: String = ""
     @State private var addressLine2: String = ""
@@ -94,11 +94,10 @@ struct ClientFormView: View {
                     TextField("Nom", text: $lastName)
                         .accessibilityIdentifier("client.lastName")
                     Picker("Genre", selection: $gender) {
-                        Text("—").tag("")
-                        Text("Homme").tag("M")
-                        Text("Femme").tag("F")
-                        Text("Autre").tag("O")
-                        Text("Non spécifié").tag("U")
+                        Text("—").tag(Gender?.none)
+                        ForEach(Gender.allCases, id: \.self) { g in
+                            Text(g.displayName).tag(Gender?.some(g))
+                        }
                     }
                     .accessibilityIdentifier("client.gender")
 
@@ -256,7 +255,7 @@ struct ClientFormView: View {
             email = c.email ?? ""
             phone = c.phone ?? ""
             dateOfBirth = c.dateOfBirth.flatMap(Self.parseISODate)
-            gender = c.gender ?? ""
+            gender = c.gender
             addressLine1 = c.addressLine1 ?? ""
             addressLine2 = c.addressLine2 ?? ""
             city = c.city ?? ""
@@ -312,7 +311,7 @@ struct ClientFormView: View {
                     email: email.isEmpty ? nil : email,
                     phone: phone.isEmpty ? nil : phone,
                     dateOfBirth: dobString,
-                    gender: gender.isEmpty ? nil : gender,
+                    gender: gender,
                     addressLine1: addressLine1.isEmpty ? nil : addressLine1,
                     addressLine2: addressLine2.isEmpty ? nil : addressLine2,
                     city: city.isEmpty ? nil : city,
@@ -342,7 +341,7 @@ struct ClientFormView: View {
                     email: changed(email, c.email),
                     phone: changed(phone, c.phone),
                     dateOfBirth: changed(dobString ?? "", c.dateOfBirth),
-                    gender: changed(gender, c.gender),
+                    gender: gender != c.gender ? gender : nil,
                     addressLine1: changed(addressLine1, c.addressLine1),
                     addressLine2: changed(addressLine2, c.addressLine2),
                     city: changed(city, c.city),

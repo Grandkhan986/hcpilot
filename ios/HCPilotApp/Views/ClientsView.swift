@@ -129,7 +129,7 @@ struct ClientListItem: View {
                     .background(Color.gray.opacity(0.2))
                     .cornerRadius(4)
             } else if let gender = client.gender {
-                Text(gender == "M" ? "Homme" : "Femme")
+                Text(gender.displayName)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -234,7 +234,7 @@ struct ClientDetailView: View {
                     .font(.title2)
                     .fontWeight(.bold)
                 if let gender = client.gender, let dob = client.dateOfBirth {
-                    Text("\(gender == "M" ? "Homme" : "Femme") · \(dob)")
+                    Text("\(gender.displayName) · \(dob)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
