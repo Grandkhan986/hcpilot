@@ -1,7 +1,8 @@
 import UIKit
 
 /// Génère le PDF d'une facture stub (C-63). Format US Letter (8.5 × 11 in).
-/// Pagination automatique si les items dépassent une page (rare en pratique).
+/// Single-page only : tient toujours sur 1 page en stub (1 prestation par
+/// invoice). La pagination sera ajoutée en Sprint 4 si nécessaire (multi-items).
 ///
 /// Sprint 4 (Stripe Connect) remplacera la génération locale par un endpoint
 /// backend qui appellera Stripe Invoice + hébergera le PDF sur Supabase Storage.
@@ -228,6 +229,14 @@ enum InvoicePDFBuilder {
             .foregroundColor: UIColor.darkGray,
         ])
         currentY += lineHeight
+
+        // P-4 — Garde-fou debug : si le contenu déborde de la page, on log
+        // pour signaler la nécessité d'implémenter la pagination (Sprint 4).
+        #if DEBUG
+        if currentY > pageHeight - margin - 40 {
+            print("⚠️ InvoicePDFBuilder: contenu trop long pour 1 page. Implémenter pagination.")
+        }
+        #endif
 
         return currentY
     }
