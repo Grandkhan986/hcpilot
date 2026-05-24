@@ -68,12 +68,16 @@ struct Invoice: Identifiable, Hashable, Codable {
 
     /// Modes de paiement supportés par Stripe Connect Express + saisie cash
     /// hors plateforme (rare mais possible pour les tips terrain).
+    /// L2-31 — Ajout `check` et `wireTransfer` (cas IV mobile : factures pro
+    /// avec règlement à 30j par chèque ou virement).
     enum PaymentMethod: String, CaseIterable, Codable {
         case card
         case applePay = "apple_pay"
         case googlePay = "google_pay"
         case ach
         case cash
+        case check
+        case wireTransfer = "wire_transfer"
         case other
     }
 
@@ -128,6 +132,8 @@ extension Invoice.PaymentMethod {
         case .googlePay: return "Google Pay"
         case .ach: return "ACH"
         case .cash: return "Cash"
+        case .check: return "Check"
+        case .wireTransfer: return "Wire Transfer"
         case .other: return "Other"
         }
     }

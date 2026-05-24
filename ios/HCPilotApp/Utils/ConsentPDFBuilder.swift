@@ -25,6 +25,14 @@ enum ConsentPDFBuilder {
     private static let signatureMaxHeight: CGFloat = 100
     private static let signatureUnderlineWidth: CGFloat = 250
 
+    /// L2-24 — Constantes named pour éviter les magic numbers dispersés.
+    /// Ces offsets dépendent du `bodyFontSize` — si on change la taille de
+    /// police, il faut adapter ces valeurs.
+    private static let textBlockBottomPadding: CGFloat = 6
+    private static let checkboxYOffset: CGFloat = 2     // box vs baseline texte
+    private static let checkmarkXOffset: CGFloat = 1
+    private static let checkmarkYOffset: CGFloat = -2
+
     private static let bodyFont = UIFont.systemFont(ofSize: bodyFontSize)
 
     /// HIPAA Notice of Privacy Practices summary. Brief §Compliance HIPAA.
@@ -282,18 +290,18 @@ enum ConsentPDFBuilder {
             )
             ctx.y += height
         }
-        ctx.y += 6
+        ctx.y += textBlockBottomPadding
     }
 
     private static func drawCheckpoint(_ cp: ConsentCheckpoint, ctx: RenderContext) {
         ctx.ensureRoom(24)
-        let box = UIBezierPath(rect: CGRect(x: margin, y: ctx.y + 2, width: 12, height: 12))
+        let box = UIBezierPath(rect: CGRect(x: margin, y: ctx.y + checkboxYOffset, width: 12, height: 12))
         UIColor.black.setStroke()
         box.lineWidth = 1
         box.stroke()
         if cp.accepted {
             let check = "✓" as NSString
-            check.draw(at: CGPoint(x: margin + 1, y: ctx.y - 2), withAttributes: [
+            check.draw(at: CGPoint(x: margin + checkmarkXOffset, y: ctx.y + checkmarkYOffset), withAttributes: [
                 .font: UIFont.boldSystemFont(ofSize: 14),
                 .foregroundColor: UIColor.black,
             ])

@@ -371,6 +371,11 @@ final class APIService {
     /// POST sans body (action) avec mise en queue offline. Renvoie le JSON
     /// sur succès, ou lance `QueuedError.enqueued` si la mutation a été
     /// mise en file (offline).
+    ///
+    /// L2-19 — Le drain en arrière-plan est volontairement fire-and-forget.
+    /// `MutationQueue.drain` est lui-même thread-safe (lock interne) donc
+    /// plusieurs drain concurrents se sérialisent. Le caller n'a pas besoin
+    /// d'attendre la fin du drain pour son propre succès.
     func queuedPostAction(_ endpoint: String) async throws -> [String: Any] {
         do {
             let result = try await postAction(endpoint)
@@ -603,7 +608,11 @@ final class APIService {
     }
 
     func findLotsByBarcode(_ barcode: String) async throws -> [InventoryLot] {
-        return try await get("/inventory/by_barcode/\(barcode)")
+        // L2-21 — URL encode defensively. Les barcodes numériques (Code 128,
+        // EAN-13) ne contiennent pas de caractères réservés, mais Code 128B
+        // peut inclure des caractères ASCII printables qu'il faut encoder.
+        let encoded = barcode.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? barcode
+        return try await get("/inventory/by_barcode/\(encoded)")
     }
 
     /// Décrément de stock. Offline-safe : mise en queue si réseau indispo
@@ -707,8 +716,27 @@ final class APIService {
 
     // MARK: - Route Optimization
 
+    /// L2-22 — DTO léger pour /optimize/routes. Le backend `OptimizeVisitInput`
+    /// n'a besoin que de id + coords (lat/lng) — envoyer un Session complet
+    /// (avec photosPaths, vitals, notes) gaspille de la bande passante (~1 KB
+    /// par session × 20 sessions = 20 KB pour rien).
+    struct OptimizeRouteInput: Encodable {
+        let id: String
+        let clientId: String?
+        let latitude: Double?
+        let longitude: Double?
+    }
+
     func optimizeRoute(sessions: [Session]) async throws -> OptimizedRouteResponse {
-        return try await post("/optimize/routes", body: sessions)
+        let payload = sessions.map { s in
+            OptimizeRouteInput(
+                id: s.id,
+                clientId: s.clientId,
+                latitude: s.latitude,
+                longitude: s.longitude
+            )
+        }
+        return try await post("/optimize/routes", body: payload)
     }
 }
 
