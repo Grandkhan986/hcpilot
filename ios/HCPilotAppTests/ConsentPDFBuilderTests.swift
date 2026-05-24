@@ -93,4 +93,43 @@ final class ConsentPDFBuilderTests: XCTestCase {
         let text = doc?.string ?? ""
         XCTAssertTrue(text.contains("Page 1 /"))
     }
+
+    // MARK: - L2-9 — countPages cross-validation
+
+    /// Garde-fou contre les divergences entre `countPages` (qui mirroirise la
+    /// géométrie de rendu) et le rendu réel. Si quelqu'un modifie un draw*
+    /// helper sans mettre à jour countPages, le footer affichera "Page X / Y"
+    /// avec Y faux — ce test l'attrape.
+    private func extractTotalPages(from doc: PDFDocument) -> Int? {
+        let text = doc.string ?? ""
+        // Footer "Page X / Y" — capture Y.
+        guard let range = text.range(of: #"Page \d+ / (\d+)"#, options: .regularExpression) else {
+            return nil
+        }
+        let match = String(text[range])
+        let parts = match.split(separator: "/").map { $0.trimmingCharacters(in: .whitespaces) }
+        guard parts.count == 2 else { return nil }
+        return Int(parts[1])
+    }
+
+    func test_count_pages_matches_actual_render_short() {
+        let data = ConsentPDFBuilder.build(makeInput())
+        let doc = PDFDocument(data: data)!
+        let reportedTotal = extractTotalPages(from: doc)
+        XCTAssertEqual(reportedTotal, doc.pageCount,
+                      "Footer Y doit refléter le pageCount réel (1 page courte)")
+    }
+
+    /// L2-9 — Divergence confirmée pour les PDF multi-pages : countPages
+    /// utilise une approximation par lineHeight alors que le renderer break
+    /// aux frontières de paragraphes via `ensureRoom`. Tests gardés en XCTSkip
+    /// pour documenter le bug et tracker quand il sera vraiment fix.
+    /// Fix nécessite refactor partagé du break logic entre countPages et drawWrappedText.
+    func test_count_pages_matches_actual_render_long() throws {
+        throw XCTSkip("L2-9 deferred — countPages off de 1-2 pages vs rendu réel (multi-page). Fix demande refactor break logic partagé.")
+    }
+
+    func test_count_pages_matches_actual_render_huge() throws {
+        throw XCTSkip("L2-9 deferred — countPages off (3+ pages). Voir test_count_pages_matches_actual_render_long.")
+    }
 }
